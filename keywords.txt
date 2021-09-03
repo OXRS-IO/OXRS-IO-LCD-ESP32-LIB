@@ -1,0 +1,24 @@
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+
+OXRS_LCD			KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+
+draw_logo			KEYWORD2
+draw_ports			KEYWORD2
+show_IP				KEYWORD2
+show_MAC			KEYWORD2
+show_MQTT_topic		KEYWORD2
+show_event			KEYWORD2
+process				KEYWORD2
+update				KEYWORD2
+
+#######################################
+# Constants (LITERAL1)
+#######################################
+
+
