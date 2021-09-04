@@ -13,6 +13,7 @@ OXRS_LCD::OXRS_LCD ()
 void OXRS_LCD::begin (uint32_t ontime_event, uint32_t ontime_display)
 {
   tft.begin();               // Initialise the display
+  tft.setRotation(1);
   tft.fillRect(0, 0, 240, 240,  TFT_BLACK);
 
   // set up for backlight dimming (PWM)
