@@ -7,6 +7,9 @@ OXRS_LCD::OXRS_LCD ()
 {
   _last_lcd_trigger = 0L;
   _last_event_display = 0L;  
+  _last_rx_trigger = 0L;
+  _last_tx_trigger = 0L;
+
   memset(_io_values, 0, sizeof(_io_values));
 }
 
@@ -27,10 +30,10 @@ void OXRS_LCD::begin (uint32_t ontime_event, uint32_t ontime_display)
 }
 
 
-void OXRS_LCD::draw_logo(char * firmware_version)
+void OXRS_LCD::draw_header(char * fw_maker_code, char * fw_name, char * fw_version,  char * fw_platform )
 {
-  char buffer[20];
-  
+  char buffer[30];
+/**  
   // logo
   tft.fillRect(0, 0, 240, 32,  TFT_WHITE);
   int x = (240 - logoWidth - superWidth - houseWidth) / 2;
@@ -44,18 +47,64 @@ void OXRS_LCD::draw_logo(char * firmware_version)
   strcpy(buffer, "URC v");
   strcat(buffer, firmware_version);
   tft.drawString(buffer, 240/2, 40);
+**/
+  int logo_h = 0;
+  int logo_w = 0;
+  const unsigned char * logo_bm = NULL;
+  uint16_t logo_fg = TFT_BLACK;
+  uint16_t logo_bg = TFT_WHITE;
+  if (strcmp("SHA", fw_maker_code) == 0)
+  {
+    logo_h = sha40Height;
+    logo_w = sha40Width;
+    logo_bm = sha40;
+    logo_fg = tft.color565(0, 165, 179);
+    logo_bg = TFT_WHITE;
+  }
+  if (strcmp("AC", fw_maker_code) == 0)
+  {
+    logo_h = ac40Height;
+    logo_w = ac40Width;
+    logo_bm = ac40;
+    logo_fg = TFT_WHITE;
+    logo_bg = TFT_BROWN;
+  }
+  if (strcmp("BMD", fw_maker_code) == 0)
+  {
+    logo_h = bmd40Height;
+    logo_w = bmd40Width;
+    logo_bm = bmd40;
+    logo_fg = TFT_WHITE;
+    logo_bg = TFT_BLUE;
+  }
+ 
+  tft.drawBitmap(0, 0, logo_bm, logo_w, logo_h, logo_fg, logo_bg);
+  tft.fillRect(42, 0, 240, 40,  TFT_WHITE);
+  tft.setTextDatum( TL_DATUM);
+  tft.setTextColor(TFT_BLACK);
+  tft.setFreeFont(&Roboto_Light_13);
+  tft.drawString(fw_name, 46, 0);
+  tft.setFreeFont(&Roboto_Mono_Thin_13);
+  sprintf(buffer, "Maker: %s", fw_maker_code);
+  tft.drawString(buffer, 46, 13);
+  sprintf(buffer, "Vers.: %s / %s", fw_version, fw_platform); 
+  tft.drawString(buffer, 46, 26); 
 }
 
-void OXRS_LCD::show_IP (IPAddress ip)
+void OXRS_LCD::show_IP (IPAddress ip, int link_status)
 {
   char buffer[30];
   
   // IP
+  tft.fillRect(0, 50, 240, 13,  TFT_BLACK);
   tft.setTextColor(TFT_WHITE);
   tft.setTextDatum( TL_DATUM);
   tft.setFreeFont(&Roboto_Mono_Thin_13);
-  sprintf(buffer, "IP : %03d.%03d.%03d.%03d", ip[0],ip[1], ip[2], ip[3]);
-  tft.drawString(buffer, 10, 60);
+  sprintf(buffer, "IP  : %03d.%03d.%03d.%03d", ip[0],ip[1], ip[2], ip[3]);
+  tft.drawString(buffer, 12, 50);
+
+  _set_ip_link_led(link_status);
+  
 }
 
 void OXRS_LCD::show_MAC (byte mac[])
@@ -65,16 +114,34 @@ void OXRS_LCD::show_MAC (byte mac[])
   tft.setTextColor(TFT_WHITE);
   tft.setTextDatum( TL_DATUM);
   tft.setFreeFont(&Roboto_Mono_Thin_13);
-  sprintf(buffer, "MAC: %02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-  tft.drawString(buffer, 10, 75);
+  sprintf(buffer, "MAC : %02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+  tft.drawString(buffer, 12, 65);
 }
 
 void OXRS_LCD::show_MQTT_topic (char * topic)
 {
-  // MQTT topic
-  tft.drawString("urc/conf/URC-33C0AA/...", 10, 90);
-  // Temperature
-  tft.drawString("Rack Temp.: 12.34 C", 10, 105);
+  char buffer[30];
+
+  tft.setTextColor(TFT_WHITE);
+  tft.setTextDatum( TL_DATUM);
+  tft.setFreeFont(&Roboto_Mono_Thin_13);
+  sprintf(buffer, "MQTT: %s",topic);
+  tft.drawString(buffer, 12, 80);
+
+  _set_mqtt_rx_led(0);
+  _set_mqtt_tx_led(0); 
+}
+
+
+void OXRS_LCD::show_rack_temp (float temperature)
+{
+  char buffer[30];
+
+  tft.setTextColor(TFT_WHITE);
+  tft.setTextDatum( TL_DATUM);
+  tft.setFreeFont(&Roboto_Mono_Thin_13);
+  sprintf(buffer, "Temp: %2.2f C", temperature);
+  tft.drawString(buffer, 12, 95);
 }
 
 /*
@@ -120,6 +187,20 @@ void OXRS_LCD::_clear_event ()
   tft.fillRect(0, 225, 240, 240,  TFT_BLACK);
 }
 
+/*
+ * control mqtt rx/tx virtual leds 
+ */
+void OXRS_LCD::trigger_mqtt_rx_led (void)
+{
+  _set_mqtt_rx_led(1);
+  _last_rx_trigger = millis(); 
+}
+
+void OXRS_LCD::trigger_mqtt_tx_led (void)
+{
+  _set_mqtt_tx_led(1);
+  _last_tx_trigger = millis(); 
+}
 
 /*
  * process io_value :
@@ -156,6 +237,7 @@ void OXRS_LCD::process (int mcp, uint16_t io_value)
  * update LCD if
  *  show_event timed out
  *  LCD_on timed out
+ *  rx and tx led timeed out
  */
 void OXRS_LCD::update(void)
 {
@@ -178,6 +260,27 @@ void OXRS_LCD::update(void)
       _last_lcd_trigger = 0L;
     }
   }
+  
+  // turn of rx LED if timed out
+  if (_last_rx_trigger)
+  {
+    if ((millis() - _last_rx_trigger) > RX_TX_LED_ON)
+    {
+      _set_mqtt_rx_led(0);
+      _last_rx_trigger = 0L;
+    }
+  }
+ 
+  // turn of tx LED if timed out
+  if (_last_tx_trigger)
+  {
+    if ((millis() - _last_tx_trigger) > RX_TX_LED_ON)
+    {
+      _set_mqtt_tx_led(0);
+      _last_tx_trigger = 0L;
+    }
+  }
+ 
 } 
 
 /**
@@ -231,6 +334,30 @@ void OXRS_LCD::_update_input (uint8_t type, uint8_t index, uint8_t active)
         break;
     }
   }     
+}
+
+void OXRS_LCD::_set_mqtt_rx_led(int active)
+{
+  uint16_t color;
+ 
+  color = active ? TFT_YELLOW : TFT_DARKGREY;
+  tft.fillRoundRect(2, 80, 8, 5, 2,  color);
+}
+
+void OXRS_LCD::_set_mqtt_tx_led(int active)
+{
+  uint16_t color;
+ 
+  color = active ? TFT_ORANGE : TFT_DARKGREY;
+  tft.fillRoundRect(2, 88, 8, 5, 2,  color);
+}
+
+void OXRS_LCD::_set_ip_link_led(int active)
+{
+  uint16_t color;
+ 
+  color = active ? TFT_GREEN : TFT_RED;
+  tft.fillRoundRect(2, 54, 8, 5, 2,  color);
 }
 
 /*
