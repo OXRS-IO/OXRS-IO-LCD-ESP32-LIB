@@ -12,7 +12,7 @@
 #define TYPE_STATE 1
 
 #define       LCD_BL_ON               100                   // LCD backlight in % when ON, i.e. after an event
-#define       LCD_BL_DIM              10                     // LCD backlight in % when DIMMED (0 == OFF), i.e. after LCD_ON_MS expires
+#define       LCD_BL_DIM              10                    // LCD backlight in % when DIMMED (0 == OFF), i.e. after LCD_ON_MS expires
 #define       LCD_ON_MS               10000                 // How long to turn on the LCD after an event
 #define       LCD_EVENT_MS            3000                  // How long to display an event in the bottom line
 #define       RX_TX_LED_ON            300                   // How long to turn mqtt rx/tx led on after trgger
@@ -32,13 +32,12 @@ class OXRS_LCD
     void begin (uint32_t ontime_event=LCD_EVENT_MS, uint32_t ontime_display=LCD_ON_MS);
     void draw_header(char * fw_maker_code, char * fw_name, char * fw_version,  char * fw_platform );
     void draw_ports (uint8_t mcps_found);
-    void show_IP (IPAddress ip, int link_status);
-    void show_MAC (byte mac[]);
+    void show_ethernet();
     void show_MQTT_topic (char * topic);
-    void show_rack_temp (float temperature);
+    void show_temp (float temperature);
     void show_event (char s_event[]);
     void process (int mcp, uint16_t io_value);
-    void update(void);
+    void loop(void);
     void trigger_mqtt_rx_led (void);
     void trigger_mqtt_tx_led (void);
 
@@ -55,13 +54,16 @@ class OXRS_LCD
     uint32_t _ontime_display;
     uint32_t _ontime_event;
 
+    int      _ethernet_link_status;
+
     // history buffer of io_values to extract changes
     uint16_t _io_values[8];
     
     // LCD
     TFT_eSPI tft = TFT_eSPI();   // Invoke library
 
-//    void _animate (uint32_t port_changed, uint16_t mcp_io_values[]);
+    void _show_IP (IPAddress ip, int link_status);
+    void _show_MAC (byte mac[]);
     void _update_input (uint8_t type, uint8_t index, uint8_t active);
     void _clear_event ();
     void _set_backlight(int val);

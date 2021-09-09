@@ -1,6 +1,7 @@
 
 #include "Arduino.h"
 #include "OXRS_LCD.h"
+#include <Ethernet.h>
 
 
 OXRS_LCD::OXRS_LCD ()
@@ -9,7 +10,7 @@ OXRS_LCD::OXRS_LCD ()
   _last_event_display = 0L;  
   _last_rx_trigger = 0L;
   _last_tx_trigger = 0L;
-
+  _ethernet_link_status = 0;
   memset(_io_values, 0, sizeof(_io_values));
 }
 
@@ -33,21 +34,7 @@ void OXRS_LCD::begin (uint32_t ontime_event, uint32_t ontime_display)
 void OXRS_LCD::draw_header(char * fw_maker_code, char * fw_name, char * fw_version,  char * fw_platform )
 {
   char buffer[30];
-/**  
-  // logo
-  tft.fillRect(0, 0, 240, 32,  TFT_WHITE);
-  int x = (240 - logoWidth - superWidth - houseWidth) / 2;
-  tft.drawBitmap(x, 0, logo, logoWidth, logoHeight, tft.color565(0, 165, 179), TFT_WHITE);
-  tft.drawBitmap(x+logoWidth, 0, super, superWidth, superHeight, tft.color565(22, 111, 193), TFT_WHITE);
-  tft.drawBitmap(x+logoWidth+superWidth, 0, house, houseWidth, houseHeight, tft.color565(0, 165, 179), TFT_WHITE);
-  // version
-  tft.setTextDatum( TC_DATUM);
-  tft.setTextColor(TFT_WHITE);
-  tft.setFreeFont(FMB9);       // Select Free Mono Bold 9
-  strcpy(buffer, "URC v");
-  strcat(buffer, firmware_version);
-  tft.drawString(buffer, 240/2, 40);
-**/
+  
   int logo_h = 0;
   int logo_w = 0;
   const unsigned char * logo_bm = NULL;
@@ -91,11 +78,19 @@ void OXRS_LCD::draw_header(char * fw_maker_code, char * fw_name, char * fw_versi
   tft.drawString(buffer, 46, 26); 
 }
 
-void OXRS_LCD::show_IP (IPAddress ip, int link_status)
+void OXRS_LCD::show_ethernet()
+{
+  byte mac[6];
+  
+  _show_IP(Ethernet.localIP(), Ethernet.linkStatus() == LinkON ? 1 : 0);
+  Ethernet.MACAddress(mac);
+  _show_MAC(mac);
+}
+
+void OXRS_LCD::_show_IP (IPAddress ip, int link_status)
 {
   char buffer[30];
   
-  // IP
   tft.fillRect(0, 50, 240, 13,  TFT_BLACK);
   tft.setTextColor(TFT_WHITE);
   tft.setTextDatum( TL_DATUM);
@@ -107,7 +102,7 @@ void OXRS_LCD::show_IP (IPAddress ip, int link_status)
   
 }
 
-void OXRS_LCD::show_MAC (byte mac[])
+void OXRS_LCD::_show_MAC (byte mac[])
 {
   char buffer[30];
   
@@ -133,14 +128,14 @@ void OXRS_LCD::show_MQTT_topic (char * topic)
 }
 
 
-void OXRS_LCD::show_rack_temp (float temperature)
+void OXRS_LCD::show_temp (float temperature)
 {
   char buffer[30];
 
   tft.setTextColor(TFT_WHITE);
   tft.setTextDatum( TL_DATUM);
   tft.setFreeFont(&Roboto_Mono_Thin_13);
-  sprintf(buffer, "Temp: %2.2f C", temperature);
+  sprintf(buffer, "TEMP: %2.2f C", temperature);
   tft.drawString(buffer, 12, 95);
 }
 
@@ -237,9 +232,9 @@ void OXRS_LCD::process (int mcp, uint16_t io_value)
  * update LCD if
  *  show_event timed out
  *  LCD_on timed out
- *  rx and tx led timeed out
+ *  rx and tx led timed out
  */
-void OXRS_LCD::update(void)
+void OXRS_LCD::loop(void)
 {
   // Clear event display if timed out
   if (_ontime_event && _last_event_display)
@@ -261,7 +256,7 @@ void OXRS_LCD::update(void)
     }
   }
   
-  // turn of rx LED if timed out
+  // turn off rx LED if timed out
   if (_last_rx_trigger)
   {
     if ((millis() - _last_rx_trigger) > RX_TX_LED_ON)
@@ -271,7 +266,7 @@ void OXRS_LCD::update(void)
     }
   }
  
-  // turn of tx LED if timed out
+  // turn off tx LED if timed out
   if (_last_tx_trigger)
   {
     if ((millis() - _last_tx_trigger) > RX_TX_LED_ON)
@@ -281,6 +276,21 @@ void OXRS_LCD::update(void)
     }
   }
  
+  // check if ethernet link status has changed
+  uint8_t tmp = Ethernet.linkStatus();
+  if (tmp != _ethernet_link_status)
+  {
+    if (tmp != LinkON)
+    {
+      _show_IP(IPAddress(0,0,0,0), 0);
+    }
+    else
+    {
+      _show_IP(Ethernet.localIP(), 1);
+    }
+    _ethernet_link_status = tmp;
+  }
+
 } 
 
 /**
