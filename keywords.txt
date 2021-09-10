@@ -10,7 +10,6 @@ OXRS_LCD      KEYWORD1
 
 draw_header           KEYWORD2
 draw_ports            KEYWORD2
-show_ethernet         KEYWORD2
 show_MQTT_topic       KEYWORD2
 show_temp             KEYWORD2
 show_event            KEYWORD2

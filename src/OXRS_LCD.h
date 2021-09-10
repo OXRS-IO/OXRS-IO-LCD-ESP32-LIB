@@ -6,7 +6,8 @@
 #include "bitmaps.h"                // images bitmaps
 #include "Free_Fonts.h"             // Include the header file attached to this sketch
 #include "roboto_fonts.h"
-#include <IPAddress.h>
+#include <Ethernet.h>
+#include <WiFi.h>
 
 #define TYPE_FRAME 0
 #define TYPE_STATE 1
@@ -28,11 +29,11 @@
 class OXRS_LCD
 {
   public:
-    OXRS_LCD();
+    OXRS_LCD(EthernetClass * ethernet);
+    OXRS_LCD(WiFiClass * wifi);
     void begin (uint32_t ontime_event=LCD_EVENT_MS, uint32_t ontime_display=LCD_ON_MS);
     void draw_header(char * fw_maker_code, char * fw_name, char * fw_version,  char * fw_platform );
     void draw_ports (uint8_t mcps_found);
-    void show_ethernet();
     void show_MQTT_topic (char * topic);
     void show_temp (float temperature);
     void show_event (char s_event[]);
@@ -53,19 +54,26 @@ class OXRS_LCD
 
     uint32_t _ontime_display;
     uint32_t _ontime_event;
+    
+    bool     _first_call;
 
-    int      _ethernet_link_status;
-
-    // history buffer of io_values to extract changes
+    EthernetClass * _ethernet;
+    int             _ethernet_link_status;
+    WiFiClass *     _wifi;
+     
+     
+   // history buffer of io_values to extract changes
     uint16_t _io_values[8];
     
     // LCD
     TFT_eSPI tft = TFT_eSPI();   // Invoke library
 
+    void _oxrs_lcd (void);
+    void _show_ethernet(void);
     void _show_IP (IPAddress ip, int link_status);
     void _show_MAC (byte mac[]);
     void _update_input (uint8_t type, uint8_t index, uint8_t active);
-    void _clear_event ();
+    void _clear_event (void);
     void _set_backlight(int val);
     void _set_mqtt_rx_led(int active);
     void _set_mqtt_tx_led(int active);

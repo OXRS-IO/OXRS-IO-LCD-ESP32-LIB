@@ -1,16 +1,30 @@
 
 #include "Arduino.h"
 #include "OXRS_LCD.h"
-#include <Ethernet.h>
 
-
-OXRS_LCD::OXRS_LCD ()
+// for ethernet
+OXRS_LCD::OXRS_LCD (EthernetClass * ethernet)
+{
+  _wifi = NULL;
+  _ethernet = ethernet;
+  _oxrs_lcd();
+}
+// for wifi
+OXRS_LCD::OXRS_LCD (WiFiClass * wifi)
+{
+  _wifi = wifi;
+  _ethernet = NULL;
+  _oxrs_lcd();
+}
+// common
+void OXRS_LCD::_oxrs_lcd (void)
 {
   _last_lcd_trigger = 0L;
   _last_event_display = 0L;  
   _last_rx_trigger = 0L;
   _last_tx_trigger = 0L;
   _ethernet_link_status = 0;
+  _first_call = true;
   memset(_io_values, 0, sizeof(_io_values));
 }
 
@@ -67,7 +81,7 @@ void OXRS_LCD::draw_header(char * fw_maker_code, char * fw_name, char * fw_versi
  
   tft.drawBitmap(0, 0, logo_bm, logo_w, logo_h, logo_fg, logo_bg);
   tft.fillRect(42, 0, 240, 40,  TFT_WHITE);
-  tft.setTextDatum( TL_DATUM);
+  tft.setTextDatum(TL_DATUM);
   tft.setTextColor(TFT_BLACK);
   tft.setFreeFont(&Roboto_Light_13);
   tft.drawString(fw_name, 46, 0);
@@ -76,14 +90,20 @@ void OXRS_LCD::draw_header(char * fw_maker_code, char * fw_name, char * fw_versi
   tft.drawString(buffer, 46, 13);
   sprintf(buffer, "Vers.: %s / %s", fw_version, fw_platform); 
   tft.drawString(buffer, 46, 26); 
+  
+  tft.setTextColor(TFT_WHITE);
+  tft.setTextDatum(TC_DATUM);
+  tft.setFreeFont(&Roboto_Mono_Thin_13);
+  tft.drawString("connecting ...", 240/2 , 50); 
+ 
 }
 
-void OXRS_LCD::show_ethernet()
+void OXRS_LCD::_show_ethernet()
 {
   byte mac[6];
   
-  _show_IP(Ethernet.localIP(), Ethernet.linkStatus() == LinkON ? 1 : 0);
-  Ethernet.MACAddress(mac);
+  _show_IP(_ethernet->localIP(), _ethernet->linkStatus() == LinkON ? 1 : 0);
+  _ethernet->MACAddress(mac);
   _show_MAC(mac);
 }
 
@@ -93,7 +113,7 @@ void OXRS_LCD::_show_IP (IPAddress ip, int link_status)
   
   tft.fillRect(0, 50, 240, 13,  TFT_BLACK);
   tft.setTextColor(TFT_WHITE);
-  tft.setTextDatum( TL_DATUM);
+  tft.setTextDatum(TL_DATUM);
   tft.setFreeFont(&Roboto_Mono_Thin_13);
   sprintf(buffer, "IP  : %03d.%03d.%03d.%03d", ip[0],ip[1], ip[2], ip[3]);
   tft.drawString(buffer, 12, 50);
@@ -107,7 +127,7 @@ void OXRS_LCD::_show_MAC (byte mac[])
   char buffer[30];
   
   tft.setTextColor(TFT_WHITE);
-  tft.setTextDatum( TL_DATUM);
+  tft.setTextDatum(TL_DATUM);
   tft.setFreeFont(&Roboto_Mono_Thin_13);
   sprintf(buffer, "MAC : %02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
   tft.drawString(buffer, 12, 65);
@@ -118,7 +138,7 @@ void OXRS_LCD::show_MQTT_topic (char * topic)
   char buffer[30];
 
   tft.setTextColor(TFT_WHITE);
-  tft.setTextDatum( TL_DATUM);
+  tft.setTextDatum(TL_DATUM);
   tft.setFreeFont(&Roboto_Mono_Thin_13);
   sprintf(buffer, "MQTT: %s",topic);
   tft.drawString(buffer, 12, 80);
@@ -131,9 +151,10 @@ void OXRS_LCD::show_MQTT_topic (char * topic)
 void OXRS_LCD::show_temp (float temperature)
 {
   char buffer[30];
-
+  
+  tft.fillRect(0, 95, 240, 13,  TFT_BLACK);
   tft.setTextColor(TFT_WHITE);
-  tft.setTextDatum( TL_DATUM);
+  tft.setTextDatum(TL_DATUM);
   tft.setFreeFont(&Roboto_Mono_Thin_13);
   sprintf(buffer, "TEMP: %2.2f C", temperature);
   tft.drawString(buffer, 12, 95);
@@ -167,7 +188,7 @@ void OXRS_LCD::show_event (char s_event[])
   // Show last input event on bottom line
   tft.fillRect(0, 225, 240, 240,  TFT_WHITE);
   tft.setTextColor(TFT_BLACK, TFT_WHITE);
-  tft.setTextDatum( TL_DATUM);
+  tft.setTextDatum(TL_DATUM);
   tft.setFreeFont(FMB9);       // Select Free Mono Bold 9
   tft.drawString(s_event, 10, 225);
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
@@ -233,6 +254,7 @@ void OXRS_LCD::process (int mcp, uint16_t io_value)
  *  show_event timed out
  *  LCD_on timed out
  *  rx and tx led timed out
+ *  link status has changed
  */
 void OXRS_LCD::loop(void)
 {
@@ -277,20 +299,34 @@ void OXRS_LCD::loop(void)
   }
  
   // check if ethernet link status has changed
-  uint8_t tmp = Ethernet.linkStatus();
-  if (tmp != _ethernet_link_status)
+  if (_ethernet)
   {
-    if (tmp != LinkON)
+    // show IP and MAC if first time called
+    if (_first_call)
     {
-      _show_IP(IPAddress(0,0,0,0), 0);
+      _show_ethernet();
+      _first_call = false;
     }
-    else
+    uint8_t tmp = _ethernet->linkStatus();
+    if (tmp != _ethernet_link_status)
     {
-      _show_IP(Ethernet.localIP(), 1);
+      if (tmp != LinkON)
+      {
+        _show_IP(IPAddress(0,0,0,0), 0);
+      }
+      else
+      {
+        _show_IP(_ethernet->localIP(), 1);
+      }
+      _ethernet_link_status = tmp;
     }
-    _ethernet_link_status = tmp;
   }
 
+  // check if wifi connection status has changed
+  if (_wifi)
+  {
+    // TODO  implement _wifi->status()
+  }
 } 
 
 /**
