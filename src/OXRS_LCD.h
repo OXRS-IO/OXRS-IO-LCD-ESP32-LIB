@@ -29,14 +29,14 @@
 class OXRS_LCD
 {
   public:
-    OXRS_LCD(EthernetClass * ethernet);
-    OXRS_LCD(WiFiClass * wifi);
+    OXRS_LCD(EthernetClass& ethernet);
+    OXRS_LCD(WiFiClass& wifi);
     void begin (uint32_t ontime_event=LCD_EVENT_MS, uint32_t ontime_display=LCD_ON_MS);
     void draw_header(char * fw_maker_code, char * fw_name, char * fw_version,  char * fw_platform );
     void draw_ports (uint8_t mcps_found);
     void show_MQTT_topic (char * topic);
     void show_temp (float temperature);
-    void show_event (char s_event[]);
+    void show_event (char * s_event);
     void process (int mcp, uint16_t io_value);
     void loop(void);
     void trigger_mqtt_rx_led (void);
@@ -54,13 +54,12 @@ class OXRS_LCD
 
     uint32_t _ontime_display;
     uint32_t _ontime_event;
-    
-    bool     _first_call;
 
     EthernetClass * _ethernet;
     int             _ethernet_link_status;
     WiFiClass *     _wifi;
-     
+    int             _wifi_connection_status;
+      
      
    // history buffer of io_values to extract changes
     uint16_t _io_values[8];
@@ -70,6 +69,7 @@ class OXRS_LCD
 
     void _oxrs_lcd (void);
     void _show_ethernet(void);
+    void _show_wifi(void);
     void _show_IP (IPAddress ip, int link_status);
     void _show_MAC (byte mac[]);
     void _update_input (uint8_t type, uint8_t index, uint8_t active);
