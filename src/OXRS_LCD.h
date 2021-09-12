@@ -13,6 +13,7 @@
 #define TYPE_STATE 1
 
 #define PORT_LAYOUT_INPUT_96          1096
+#define PORT_LAYOUT_OUTPUT_128        2128
 
 #define       LCD_BL_ON               100                   // LCD backlight in % when ON, i.e. after an event
 #define       LCD_BL_DIM              10                    // LCD backlight in % when DIMMED (0 == OFF), i.e. after LCD_ON_MS expires
@@ -76,7 +77,8 @@ class OXRS_LCD
     void _show_wifi(void);
     void _show_IP (IPAddress ip, int link_status);
     void _show_MAC (byte mac[]);
-    void _update_input (uint8_t type, uint8_t index, uint8_t active);
+    void _update_input (uint8_t type, uint8_t index, int active);
+    void _update_output (uint8_t type, uint8_t index, int active);
     void _clear_event (void);
     void _set_backlight(int val);
     void _set_mqtt_rx_led(int active);

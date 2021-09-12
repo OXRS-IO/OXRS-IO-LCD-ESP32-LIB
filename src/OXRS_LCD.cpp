@@ -153,6 +153,22 @@ void OXRS_LCD::draw_ports (int port_layout, uint8_t mcps_found)
       mcps_found >>= 1;
     }  
   }
+  
+  if (_port_layout == PORT_LAYOUT_OUTPUT_128)
+  {    
+    tft.fillRect(0, 134, 240, 87,  TFT_WHITE);
+
+    for (int index = 1; index <= 128; index += 16)
+    {
+      int active = (bitRead(mcps_found, 0)) ? 1 : 0;
+      for (int i = 0; i < 16; i++)
+      {
+        _update_output(TYPE_FRAME, index+i, active);
+        _update_output(TYPE_STATE, index+i, active ? 0 : -1);
+      }
+      mcps_found >>= 1;
+    }  
+  }
 }
 
 /*
@@ -216,8 +232,9 @@ void OXRS_LCD::process (int mcp, uint16_t io_value)
         _set_backlight(LCD_BL_ON);
         _last_lcd_trigger = millis(); 
         
-        _update_input(TYPE_STATE, index+i+1, !bitRead(io_value, i));       
-      }
+        if (_port_layout == PORT_LAYOUT_INPUT_96) _update_input(TYPE_STATE, index+i+1, !bitRead(io_value, i));       
+        if (_port_layout == PORT_LAYOUT_OUTPUT_128) _update_output(TYPE_STATE, index+i+1, bitRead(io_value, i));       
+     }
     }
     // Need to store so we can detect changes for port animation
     _io_values[mcp] = io_value;
@@ -367,7 +384,7 @@ void OXRS_LCD::_show_MAC (byte mac[])
                                               |.......|.......|
                                               | 6 : 8 | 14: 16|                                             
 */
-void OXRS_LCD::_update_input (uint8_t type, uint8_t index, uint8_t active)
+void OXRS_LCD::_update_input (uint8_t type, uint8_t index, int active)
 {  
   int bw = 19;
   int bh = 19;
@@ -405,6 +422,64 @@ void OXRS_LCD::_update_input (uint8_t type, uint8_t index, uint8_t active)
         break;
       case 3:
         tft.fillRoundRect(x+1+bw/2, y+bh/2+1 , bw/2-2, bh/2-2, 2, color);
+        break;
+    }
+  }     
+}
+
+/**
+  animation of out state in ports view
+           +--+--+--+--+--+--+--+--++--+--+--+--+--+--+--+--+ +--+--+--+--+--+--+--+--++--+--+--+--+--+--+--+--+
+  index:   | 1| 2| 3| 4| 5| 6| 7| 8|| 9|10|11|12|13|14|15|16| |17|18|19|20|21|22|23|24||25|26|27|28|29|30|31|32|     
+           +--+--+--+--+--+--+--+--++--+--+--+--+--+--+--+--+ +--+--+--+--+--+--+--+--++--+--+--+--+--+--+--+--+
+           +--+--+--+--+--+--+--+--++--+--+--+--+--+--+--+--+ +--+--+--+--+--+--+--+--++--+--+--+--+--+--+--+--+
+           |33|  |  |  |  |  |  |  ||  |  |  |  |  |  |  |  | |  |  |  |  |  |  |  |  ||  |  |  |  |  |  |  |64|     
+           +--+--+--+--+--+--+--+--++--+--+--+--+--+--+--+--+ +--+--+--+--+--+--+--+--++--+--+--+--+--+--+--+--+
+           +--+--+--+--+--+--+--+--++--+--+--+--+--+--+--+--+ +--+--+--+--+--+--+--+--++--+--+--+--+--+--+--+--+
+           |65|  |  |  |  |  |  |  ||  |  |  |  |  |  |  |  | |  |  |  |  |  |  |  |  ||  |  |  |  |  |  |  |96|     
+           +--+--+--+--+--+--+--+--++--+--+--+--+--+--+--+--+ +--+--+--+--+--+--+--+--++--+--+--+--+--+--+--+--+
+           +--+--+--+--+--+--+--+--++--+--+--+--+--+--+--+--+ +--+--+--+--+--+--+--+--++--+--+--+--+--+--+--+--+
+           |97|  |  |  |  |  |  |  ||  |  |  |  |  |  |  |  | |  |  |  |  |  |  |  |  ||  |  |  |  |  |  |  |128|     
+           +--+--+--+--+--+--+--+--++--+--+--+--+--+--+--+--+ +--+--+--+--+--+--+--+--++--+--+--+--+--+--+--+--+
+
+   frame : x = 0; y = 134 ; w = 240; h = 4*21+2 = 86
+ */
+void OXRS_LCD::_update_output (uint8_t type, uint8_t index, int active)
+{  
+  int bw = 8;
+  int bh = 19;
+  int xo = 4;
+  int x = 0;
+  int y = 136;
+  uint16_t color;
+  int index_mod;
+
+  index -= 1;
+  index_mod = index % 32;
+  
+  y = y + ((index / 32) * (bh + 2));
+  xo = xo + (((index_mod) / 8) * 2) + (((index_mod) / 16) * 2);
+  x = xo + ((index_mod) * (bw - 1));
+
+  if (type == TYPE_FRAME)
+  // draw port frame
+  {
+    color = active ? TFT_WHITE : TFT_DARKGREY;
+    tft.drawRect(x, y, bw, bh, color);
+  }
+  else
+  // draw virtual led in port
+  {
+    tft.fillRect(x+1, y+1, bw-2, bh-2, TFT_BLACK);
+    switch (active) {
+      case -1:
+        tft.fillRect(x+2, y+bh/2+2, bw-4, bh/2-4,  TFT_DARKGREY);
+        break;
+      case 0:
+        tft.fillRect(x+2, y+bh/2+2, bw-4, bh/2-4,  TFT_GREEN);
+        break;
+      case 1:
+        tft.fillRect(x+1, y+1,      bw-2, bh-2,  TFT_RED);
         break;
     }
   }     
