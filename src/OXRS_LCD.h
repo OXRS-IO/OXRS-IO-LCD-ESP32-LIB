@@ -12,6 +12,9 @@
 #define TYPE_FRAME 0
 #define TYPE_STATE 1
 
+#define PORT_LAYOUT_INPUT_96          1096
+#define PORT_LAYOUT_OUTPUT_128        2128
+
 #define       LCD_BL_ON               100                   // LCD backlight in % when ON, i.e. after an event
 #define       LCD_BL_DIM              10                    // LCD backlight in % when DIMMED (0 == OFF), i.e. after LCD_ON_MS expires
 #define       LCD_ON_MS               10000                 // How long to turn on the LCD after an event
@@ -33,7 +36,7 @@ class OXRS_LCD
     OXRS_LCD(WiFiClass& wifi);
     void begin (uint32_t ontime_event=LCD_EVENT_MS, uint32_t ontime_display=LCD_ON_MS);
     void draw_header(char * fw_maker_code, char * fw_name, char * fw_version,  char * fw_platform );
-    void draw_ports (uint8_t mcps_found);
+    void draw_ports (int port_layout, uint8_t mcps_found);
     void show_MQTT_topic (char * topic);
     void show_temp (float temperature);
     void show_event (char * s_event);
@@ -59,7 +62,9 @@ class OXRS_LCD
     int             _ethernet_link_status;
     WiFiClass *     _wifi;
     int             _wifi_connection_status;
-      
+
+    // defines how i/o ports are displayed and animated
+    int _port_layout;
      
    // history buffer of io_values to extract changes
     uint16_t _io_values[8];

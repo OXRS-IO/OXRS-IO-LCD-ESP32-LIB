@@ -134,21 +134,25 @@ void OXRS_LCD::show_temp (float temperature)
 /*
  * draw ports with inactive inputs on screen 
  */
-void OXRS_LCD::draw_ports (uint8_t mcps_found)
+void OXRS_LCD::draw_ports (int port_layout, uint8_t mcps_found)
 { 
-  for (int index = 1; index <= 96; index += 16)
+  _port_layout = port_layout;
+  if (_port_layout == PORT_LAYOUT_INPUT_96)
   {
-    int active = (bitRead(mcps_found, 0)) ? 1 : 0;
-    for (int i = 0; i < 16; i++)
+    for (int index = 1; index <= 96; index += 16)
     {
-      if ((i % 4) == 0)
+      int active = (bitRead(mcps_found, 0)) ? 1 : 0;
+      for (int i = 0; i < 16; i++)
       {
-        _update_input(TYPE_FRAME, index+i, active);
+        if ((i % 4) == 0)
+        {
+          _update_input(TYPE_FRAME, index+i, active);
+        }
+        _update_input(TYPE_STATE, index+i, 0);
       }
-      _update_input(TYPE_STATE, index+i, 0);
-    }
-    mcps_found >>= 1;
-  }  
+      mcps_found >>= 1;
+    }  
+  }
 }
 
 /*
