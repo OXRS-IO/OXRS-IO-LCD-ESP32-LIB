@@ -13,6 +13,7 @@
 #define TYPE_STATE 1
 
 #define PORT_LAYOUT_INPUT_96          1096
+#define PORT_LAYOUT_INPUT_128         1128
 #define PORT_LAYOUT_OUTPUT_128        2128
 
 #define       LCD_BL_ON               100                   // LCD backlight in % when ON, i.e. after an event
@@ -75,11 +76,12 @@ class OXRS_LCD
     void _oxrs_lcd (void);
     void _show_ethernet(void);
     void _show_wifi(void);
-    void _show_IP (IPAddress ip, int link_status);
-    void _show_MAC (byte mac[]);
-    void _update_input (uint8_t type, uint8_t index, int active);
-    void _update_output (uint8_t type, uint8_t index, int active);
-    void _clear_event (void);
+    void _show_IP(IPAddress ip, int link_status);
+    void _show_MAC(byte mac[]);
+    void _update_input_96(uint8_t type, uint8_t index, int active);
+    void _update_input_128(uint8_t type, uint8_t index, int active);
+    void _update_output_128(uint8_t type, uint8_t index, int active);
+    void _clear_event(void);
     void _set_backlight(int val);
     void _set_mqtt_rx_led(int active);
     void _set_mqtt_tx_led(int active);
