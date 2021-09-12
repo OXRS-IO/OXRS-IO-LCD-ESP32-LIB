@@ -13,7 +13,6 @@
 #define TYPE_STATE 1
 
 #define PORT_LAYOUT_INPUT_96          1096
-#define PORT_LAYOUT_OUTPUT_128        2128
 
 #define       LCD_BL_ON               100                   // LCD backlight in % when ON, i.e. after an event
 #define       LCD_BL_DIM              10                    // LCD backlight in % when DIMMED (0 == OFF), i.e. after LCD_ON_MS expires
