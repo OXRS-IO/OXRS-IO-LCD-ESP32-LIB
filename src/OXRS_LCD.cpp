@@ -551,10 +551,10 @@ void OXRS_LCD::_update_output_128 (uint8_t type, uint8_t index, int active)
     tft.fillRect(x+1, y+1, bw-2, bh-2, TFT_BLACK);
     switch (active) {
       case -1:
-        tft.fillRect(x+2, y+bh/2+2, bw-4, bh/2-4,  TFT_DARKGREY);
+        tft.drawRect(x+2, y+bh/2+2, bw-4, bh/2-4,  TFT_DARKGREY);
         break;
       case 0:
-        tft.fillRect(x+2, y+bh/2+2, bw-4, bh/2-4,  TFT_GREEN);
+        tft.fillRect(x+2, y+bh/2+2, bw-4, bh/2-4,  TFT_LIGHTGREY);
         break;
       case 1:
         tft.fillRect(x+1, y+1,      bw-2, bh-2,  TFT_RED);
