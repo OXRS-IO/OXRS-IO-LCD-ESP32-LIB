@@ -44,7 +44,7 @@ void OXRS_LCD::begin (uint32_t ontime_event, uint32_t ontime_display)
 }
 
 
-void OXRS_LCD::draw_header(char * fw_maker_code, char * fw_name, char * fw_version,  char * fw_platform )
+void OXRS_LCD::draw_header(const char * fw_maker_code, const char * fw_name, const char * fw_version, const char * fw_platform )
 {
   char buffer[30];
 
