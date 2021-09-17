@@ -23,8 +23,8 @@ void OXRS_LCD::_oxrs_lcd (void)
   _last_event_display = 0L;  
   _last_rx_trigger = 0L;
   _last_tx_trigger = 0L;
-  _ethernet_link_status = NULL;
-  _wifi_connection_status = NULL;
+  _ethernet_link_status = Unknown;
+  _wifi_connection_status = WL_IDLE_STATUS;
   memset(_io_values, 0, sizeof(_io_values));
 }
 
