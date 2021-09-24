@@ -126,7 +126,7 @@ void OXRS_LCD::show_temp (float temperature)
   tft.setTextColor(TFT_WHITE);
   tft.setTextDatum(TL_DATUM);
   tft.setFreeFont(&Roboto_Mono_Thin_13);
-  sprintf(buffer, "TEMP: %2.2f C", temperature);
+  sprintf(buffer, "TEMP: %2.1f C", temperature);
   tft.drawString(buffer, 12, 95);
 }
 
