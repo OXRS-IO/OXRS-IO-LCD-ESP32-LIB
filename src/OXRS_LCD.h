@@ -15,6 +15,7 @@
 #define PORT_LAYOUT_INPUT_96          1096
 #define PORT_LAYOUT_INPUT_128         1128
 #define PORT_LAYOUT_OUTPUT_128        2128
+#define PORT_LAYOUT_IO_48             3048
 
 #define       LCD_BL_ON               100                   // LCD backlight in % when ON, i.e. after an event
 #define       LCD_BL_DIM              10                    // LCD backlight in % when DIMMED (0 == OFF), i.e. after LCD_ON_MS expires
@@ -81,6 +82,7 @@ class OXRS_LCD
     void _update_input_96(uint8_t type, uint8_t index, int active);
     void _update_input_128(uint8_t type, uint8_t index, int active);
     void _update_output_128(uint8_t type, uint8_t index, int active);
+    void _update_io_48(uint8_t type, uint8_t index, int active);
     void _clear_event(void);
     void _set_backlight(int val);
     void _set_mqtt_rx_led(int active);

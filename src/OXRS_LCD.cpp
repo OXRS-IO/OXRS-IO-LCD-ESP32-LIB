@@ -186,6 +186,24 @@ void OXRS_LCD::draw_ports (int port_layout, uint8_t mcps_found)
       mcps_found >>= 1;
     }  
   }
+  
+  if (_port_layout == PORT_LAYOUT_IO_48)
+  {    
+
+    for (int index = 1; index <= 48; index += 16)
+    {
+      for (int i = 0; i < 16; i++)
+      {
+        if (index <= 16)
+        {
+          _update_io_48(TYPE_FRAME, index+i, 1);
+        }
+        _update_io_48(TYPE_STATE, index+i, 0);
+      }
+      mcps_found >>= 1;
+    }  
+  }
+
 }
 
 /*
@@ -255,6 +273,15 @@ void OXRS_LCD::process (int mcp, uint16_t io_value)
             _update_input_128(TYPE_STATE, index+i+1, !bitRead(io_value, i)); break;
           case PORT_LAYOUT_OUTPUT_128:
             _update_output_128(TYPE_STATE, index+i+1, bitRead(io_value, i)); break;
+          case PORT_LAYOUT_IO_48:
+            if (index < 16)
+            {
+              _update_io_48(TYPE_STATE, index+i+1, !bitRead(io_value, i));
+            } else
+            {
+              _update_io_48(TYPE_STATE, index+i+1, bitRead(io_value, i));
+            }
+            break;
         }
      }
     }
@@ -562,6 +589,81 @@ void OXRS_LCD::_update_output_128 (uint8_t type, uint8_t index, int active)
     }
   }     
 }
+
+/**
+  animation of input and outputstate in ports view
+  Ports:    | 1 | 3 | 5 | 7 |     Index:      | 1 : 2 | 7 : 8 |    function:  | O : O |
+            +---+---+---+---+....             |.......|.......|               |.......|
+            | 2 | 4 | 6 | 8 |                 | 3 :   | 9 :   |               | I :   |
+                                              +-------+-------+......         +-------+
+                                              | 4 : 5 | 10: 11|
+                                              |.......|.......|
+                                              | 6 :   | 12:   |
+  index 00..15 Input 00..15     ; 0 -> 2;         1 -> 5;         2 -> 8
+  index 16..47 Output 00..31   ;  0 -> 0; 1 -> 1; 2 -> 3; 3 -> 4; 4 ->6; 5 -> 7
+  0 .. 15 (inputs)
+  index = i * 3 + 2
+  16 .. 31 , 32 .. 47 (outputs)
+  i -= 16
+  index = (i / 2) * 3 + i % 2
+*/
+void OXRS_LCD::_update_io_48 (uint8_t type, uint8_t index, int active)
+{  
+
+  int bw = 27;
+  int bh = 33;
+  int bht = bh-bw/2;
+  int xo = 10;
+  int x = 0;
+  int y = 150;
+  int port;
+  int i;
+  uint16_t color;
+
+  index -= 1;
+  i = index;
+  if (i < 16)
+  {
+    index = i * 3 + 2;
+  }
+  else
+  {
+    i -= 16;
+    index = (i / 2) * 3 + i % 2; 
+  }
+  port = index / 3;
+  y = y + (port % 2) * bh;
+  xo = xo + (port / 8) * 3;
+  x = xo + (port / 2) * bw;
+
+  if (type == TYPE_FRAME)
+  // draw port fame
+  {
+    color = active ? TFT_WHITE : TFT_DARKGREY;
+    tft.drawRect(x, y, bw, bh, color);
+    tft.drawRect(x, y, bw/2+1, bht, color);
+    tft.drawRect(x+bw/2, y, bw/2+1, bht, color);
+  }
+  else
+  // draw virtual led in port
+  {
+    switch (index % 3){
+      case 0:
+        color = active ? TFT_RED : TFT_DARKGREY; 
+        tft.fillRect(x+1     , y+1      , bw/2-1, bht-2, color);
+        break;
+      case 1:
+        color = active ? TFT_RED : TFT_DARKGREY; 
+        tft.fillRect(x+1+bw/2, y+1      , bw/2-1, bht-2, color);
+        break;
+      case 2:
+        color = active ? TFT_YELLOW : TFT_DARKGREY;
+        tft.fillRoundRect(x+2     , y+bht+1 , bw/2-3, bh-bht-3, 3, color);
+        break;
+    }
+  }     
+}
+
 
 /*
  * animated "leds"
