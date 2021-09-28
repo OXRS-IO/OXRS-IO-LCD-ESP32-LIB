@@ -1,6 +1,19 @@
 
 #include "Arduino.h"
 #include "OXRS_LCD.h"
+#include <ArduinoJson.h>
+
+// makers taken from https://oxrs.io/glossary/makers.html
+PROGMEM const char maker_table[] = {
+                            "[{\"code\":\"AC\",\"name\":\"Austin's Creations\"},"
+                            "{\"code\":\"BC\",\"name\":\"BetterCorp\"},"
+                            "{\"code\":\"BMD\",\"name\":\"Bedrock Media Designs\"},"
+                            "{\"code\":\"DEN\",\"name\":\"Dennistries Ltd\"},"
+                            "{\"code\":\"FMA\",\"name\":\"Frank McAlinden\"},"
+                            "{\"code\":\"IO\",\"name\":\"OXRS Core Team\"},"
+                            "{\"code\":\"SHA\",\"name\":\"SuperHouse Automation\"}"
+                            "]" };
+
 
 // for ethernet
 OXRS_LCD::OXRS_LCD (EthernetClass& ethernet)
@@ -54,6 +67,20 @@ void OXRS_LCD::draw_header(const char * fw_maker_code, const char * fw_name, con
   const unsigned char * logo_bm = oxrs40;
   uint16_t logo_fg = tft.color565(167, 239, 225);
   uint16_t logo_bg = tft.color565(45, 74, 146);
+  const char * maker_name = NULL;
+  
+  // find maker name to print in header
+  DynamicJsonDocument lut(512);
+  deserializeJson(lut, maker_table);
+
+  JsonArray array = lut.as<JsonArray>();
+  for (JsonVariant v : array)
+  {
+    if (strcmp(v["code"], fw_maker_code) == 0)
+    {
+      maker_name = (const char*)v["name"];
+    }
+  }
 
   if (strcmp("SHA", fw_maker_code) == 0)
   {
@@ -87,10 +114,17 @@ void OXRS_LCD::draw_header(const char * fw_maker_code, const char * fw_name, con
   tft.setFreeFont(&Roboto_Light_13);
   
   tft.drawString(fw_name, 46, 0);
-  
-  tft.drawString("Maker", 46, 13);
-  sprintf(buffer, ": %s", fw_maker_code);
-  tft.drawString(buffer, 46+50, 13);
+
+  if (maker_name == NULL)
+  {
+    tft.drawString("Maker", 46, 13);
+    sprintf(buffer, ": %s", fw_maker_code);
+    tft.drawString(buffer, 46+50, 13);
+  } 
+  else
+  {
+    tft.drawString(maker_name, 46, 13);
+  }
   
   tft.drawString("Version", 46, 26); 
   sprintf(buffer, ": %s / %s", fw_version, fw_platform); 
