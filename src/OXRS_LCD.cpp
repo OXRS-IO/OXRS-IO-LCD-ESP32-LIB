@@ -3,6 +3,14 @@
 #include "OXRS_LCD.h"
 #include <ArduinoJson.h>
 
+// Call up the SPIFFS FLASH filing system this is part of the ESP Core
+#define FS_NO_GLOBALS
+
+#ifdef ESP32
+  #include "SPIFFS.h"  // For ESP32 only
+#endif
+
+
 // makers taken from https://oxrs.io/glossary/makers.html
 PROGMEM const char maker_table[] = {
                             "[{\"code\":\"AC\",\"name\":\"Austin's Creations\"},"
@@ -54,6 +62,13 @@ void OXRS_LCD::begin (uint32_t ontime_event, uint32_t ontime_display)
   
   _ontime_display = ontime_display;
   _ontime_event = ontime_event;
+  
+
+  if (!SPIFFS.begin()) {
+    Serial.println("SPIFFS initialisation failed!");
+    while (1) yield(); // Stay here twiddling thumbs waiting
+  }
+  Serial.println("\r\nSPIFFS initialised."); 
 }
 
 
@@ -107,7 +122,9 @@ void OXRS_LCD::draw_header(const char * fw_maker_code, const char * fw_name, con
     logo_bg = TFT_BLUE;
   }
  
-  tft.drawBitmap(0, 0, logo_bm, logo_w, logo_h, logo_fg, logo_bg);
+//  tft.drawBitmap(0, 0, logo_bm, logo_w, logo_h, logo_fg, logo_bg);
+  _drawBmp("/logo.bmp", 0, 0);
+
   tft.fillRect(42, 0, 240, 40,  TFT_WHITE);
   tft.setTextDatum(TL_DATUM);
   tft.setTextColor(TFT_BLACK);
@@ -754,4 +771,97 @@ void OXRS_LCD::_set_ip_link_led(int active)
 void OXRS_LCD::_set_backlight(int val)
 {
   ledcWrite(BL_PWM_CHANNEL, 255*val/100); 
+}
+
+
+
+
+// Bodmers BMP image rendering function
+
+void OXRS_LCD::_drawBmp(const char *filename, int16_t x, int16_t y) {
+
+  if ((x >= tft.width()) || (y >= tft.height())) return;
+
+  fs::File bmpFS;
+
+  // Open requested file on SD card
+  bmpFS = SPIFFS.open(filename, "r");
+
+  if (!bmpFS)
+  {
+    Serial.print("File not found");
+    return;
+  }
+
+  uint32_t seekOffset;
+  uint16_t w, h, row, col;
+  uint8_t  r, g, b;
+
+  uint32_t startTime = millis();
+
+  if (_read16(bmpFS) == 0x4D42)
+  {
+    _read32(bmpFS);
+    _read32(bmpFS);
+    seekOffset = _read32(bmpFS);
+    _read32(bmpFS);
+    w = _read32(bmpFS);
+    h = _read32(bmpFS);
+
+    if ((_read16(bmpFS) == 1) && (_read16(bmpFS) == 24) && (_read32(bmpFS) == 0))
+    {
+      y += h - 1;
+
+      bool oldSwapBytes = tft.getSwapBytes();
+      tft.setSwapBytes(true);
+      bmpFS.seek(seekOffset);
+
+      uint16_t padding = (4 - ((w * 3) & 3)) & 3;
+      uint8_t lineBuffer[w * 3 + padding];
+
+      for (row = 0; row < h; row++) {
+        
+        bmpFS.read(lineBuffer, sizeof(lineBuffer));
+        uint8_t*  bptr = lineBuffer;
+        uint16_t* tptr = (uint16_t*)lineBuffer;
+        // Convert 24 to 16 bit colours
+        for (uint16_t col = 0; col < w; col++)
+        {
+          b = *bptr++;
+          g = *bptr++;
+          r = *bptr++;
+          *tptr++ = ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
+        }
+
+        // Push the pixel row to screen, pushImage will crop the line if needed
+        // y is decremented as the BMP image is drawn bottom up
+        tft.pushImage(x, y--, w, 1, (uint16_t*)lineBuffer);
+      }
+      tft.setSwapBytes(oldSwapBytes);
+      Serial.print("Loaded in "); Serial.print(millis() - startTime);
+      Serial.println(" ms");
+    }
+    else Serial.println("BMP format not recognized.");
+  }
+  bmpFS.close();
+}
+
+// These read 16- and 32-bit types from the SD card file.
+// BMP data is stored little-endian, Arduino is little-endian too.
+// May need to reverse subscript order if porting elsewhere.
+
+uint16_t OXRS_LCD::_read16(fs::File &f) {
+  uint16_t result;
+  ((uint8_t *)&result)[0] = f.read(); // LSB
+  ((uint8_t *)&result)[1] = f.read(); // MSB
+  return result;
+}
+
+uint32_t OXRS_LCD::_read32(fs::File &f) {
+  uint32_t result;
+  ((uint8_t *)&result)[0] = f.read(); // LSB
+  ((uint8_t *)&result)[1] = f.read();
+  ((uint8_t *)&result)[2] = f.read();
+  ((uint8_t *)&result)[3] = f.read(); // MSB
+  return result;
 }
