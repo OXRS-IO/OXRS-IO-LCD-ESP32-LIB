@@ -3,12 +3,7 @@
 #include "OXRS_LCD.h"
 #include <ArduinoJson.h>
 
-// Call up the SPIFFS FLASH filing system this is part of the ESP Core
-#define FS_NO_GLOBALS
 
-#ifdef ESP32
-  #include "SPIFFS.h"  // For ESP32 only
-#endif
 
 
 // makers taken from https://oxrs.io/glossary/makers.html
@@ -63,7 +58,8 @@ void OXRS_LCD::begin (uint32_t ontime_event, uint32_t ontime_display)
   _ontime_display = ontime_display;
   _ontime_event = ontime_event;
   
-
+  // rethink the following
+  // after SPIFFS is enabled during startup already
   if (!SPIFFS.begin()) {
     Serial.println("SPIFFS initialisation failed!");
     while (1) yield(); // Stay here twiddling thumbs waiting
@@ -122,7 +118,6 @@ void OXRS_LCD::draw_header(const char * fw_maker_code, const char * fw_name, con
     logo_bg = TFT_BLUE;
   }
  
-//  tft.drawBitmap(0, 0, logo_bm, logo_w, logo_h, logo_fg, logo_bg);
   _drawBmp("/logo.bmp", 0, 0);
 
   tft.fillRect(42, 0, 240, 40,  TFT_WHITE);
@@ -778,26 +773,20 @@ void OXRS_LCD::_set_backlight(int val)
 
 // Bodmers BMP image rendering function
 
-void OXRS_LCD::_drawBmp(const char *filename, int16_t x, int16_t y) {
-
-  if ((x >= tft.width()) || (y >= tft.height())) return;
-
-  fs::File bmpFS;
-
-  // Open requested file on SD card
-  bmpFS = SPIFFS.open(filename, "r");
-
-  if (!bmpFS)
-  {
-    Serial.print("File not found");
-    return;
-  }
-
+void OXRS_LCD::_drawBmp(const char *filename, int16_t x, int16_t y) 
+{
   uint32_t seekOffset;
   uint16_t w, h, row, col;
   uint8_t  r, g, b;
+  File bmpFS;
 
-  uint32_t startTime = millis();
+  // Open requested file on SPIFFS
+  bmpFS = SPIFFS.open(filename, "r");
+  if (!bmpFS)
+  {
+    Serial.println(F("[lcd] File not found"));
+    return;
+  }
 
   if (_read16(bmpFS) == 0x4D42)
   {
@@ -807,10 +796,15 @@ void OXRS_LCD::_drawBmp(const char *filename, int16_t x, int16_t y) {
     _read32(bmpFS);
     w = _read32(bmpFS);
     h = _read32(bmpFS);
+    if ((w != 40) || (h != 40))
+    {
+      Serial.println(F("[lcd] logo size not 40x40"));
+    }
 
     if ((_read16(bmpFS) == 1) && (_read16(bmpFS) == 24) && (_read32(bmpFS) == 0))
     {
-      y += h - 1;
+      // crop to h = 40
+      y += 40 - 1;
 
       bool oldSwapBytes = tft.getSwapBytes();
       tft.setSwapBytes(true);
@@ -819,7 +813,8 @@ void OXRS_LCD::_drawBmp(const char *filename, int16_t x, int16_t y) {
       uint16_t padding = (4 - ((w * 3) & 3)) & 3;
       uint8_t lineBuffer[w * 3 + padding];
 
-      for (row = 0; row < h; row++) {
+      for (row = 0; row < h; row++)
+      {
         
         bmpFS.read(lineBuffer, sizeof(lineBuffer));
         uint8_t*  bptr = lineBuffer;
@@ -835,13 +830,12 @@ void OXRS_LCD::_drawBmp(const char *filename, int16_t x, int16_t y) {
 
         // Push the pixel row to screen, pushImage will crop the line if needed
         // y is decremented as the BMP image is drawn bottom up
-        tft.pushImage(x, y--, w, 1, (uint16_t*)lineBuffer);
+        // crop to w = 40
+        tft.pushImage(x, y--, 40, 1, (uint16_t*)lineBuffer);
       }
       tft.setSwapBytes(oldSwapBytes);
-      Serial.print("Loaded in "); Serial.print(millis() - startTime);
-      Serial.println(" ms");
     }
-    else Serial.println("BMP format not recognized.");
+    else Serial.println(F("[lcd] BMP format not recognized."));
   }
   bmpFS.close();
 }
@@ -850,14 +844,16 @@ void OXRS_LCD::_drawBmp(const char *filename, int16_t x, int16_t y) {
 // BMP data is stored little-endian, Arduino is little-endian too.
 // May need to reverse subscript order if porting elsewhere.
 
-uint16_t OXRS_LCD::_read16(fs::File &f) {
+uint16_t OXRS_LCD::_read16(File &f) 
+{
   uint16_t result;
   ((uint8_t *)&result)[0] = f.read(); // LSB
   ((uint8_t *)&result)[1] = f.read(); // MSB
   return result;
 }
 
-uint32_t OXRS_LCD::_read32(fs::File &f) {
+uint32_t OXRS_LCD::_read32(File &f) 
+{
   uint32_t result;
   ((uint8_t *)&result)[0] = f.read(); // LSB
   ((uint8_t *)&result)[1] = f.read();

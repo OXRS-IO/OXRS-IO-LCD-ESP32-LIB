@@ -8,7 +8,7 @@
 #include "roboto_fonts.h"
 #include <Ethernet.h>
 #include <WiFi.h>
-#include <FS.h>
+#include <SPIFFS.h>
 
 #define TYPE_FRAME 0
 #define TYPE_STATE 1
@@ -55,6 +55,7 @@ class OXRS_LCD
     void trigger_mqtt_tx_led (void);
     void show_mqtt_connection_status (bool state);
 
+
     
   private:  
     // for timeout (clear) of bottom line input event display
@@ -97,8 +98,8 @@ class OXRS_LCD
     void _set_mqtt_tx_led(int state);
     void _set_ip_link_led(int active);
     void _drawBmp(const char *filename, int16_t x, int16_t y);
-    uint16_t _read16(fs::File &f);
-    uint32_t _read32(fs::File &f);   
+    uint16_t _read16(File &f);
+    uint32_t _read32(File &f);   
 };
 
 
