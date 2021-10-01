@@ -147,8 +147,8 @@ void OXRS_LCD::show_MQTT_topic (char * topic)
   sprintf(buffer, "MQTT: %s",topic);
   tft.drawString(buffer, 12, 80);
 
-  _set_mqtt_rx_led(0);
-  _set_mqtt_tx_led(0); 
+  _set_mqtt_rx_led(2);
+  _set_mqtt_tx_led(2); 
 }
 
 
@@ -278,6 +278,14 @@ void OXRS_LCD::trigger_mqtt_tx_led (void)
   _last_tx_trigger = millis(); 
 }
 
+void OXRS_LCD::show_mqtt_not_connected (void)
+{
+  _set_mqtt_tx_led(2);
+  _set_mqtt_rx_led(2);
+  _last_tx_trigger = 0L;
+  _last_rx_trigger = 0L;
+}
+
 /*
  * process io_value :
  * check for changes vs last stored value
@@ -391,6 +399,7 @@ void OXRS_LCD::_show_ethernet()
     // refresh IP on link status change
     if (_ethernet_link_status == LinkON)
     {
+      if (_ethernet->localIP()[0] == 0) {_ethernet_link_status = Unknown;}
       _show_IP(_ethernet->localIP(), 1);
     }
     else
@@ -439,7 +448,14 @@ void OXRS_LCD::_show_IP (IPAddress ip, int link_status)
   tft.setTextColor(TFT_WHITE);
   tft.setTextDatum(TL_DATUM);
   tft.setFreeFont(&Roboto_Mono_Thin_13);
-  sprintf(buffer, "IP  : %03d.%03d.%03d.%03d", ip[0],ip[1], ip[2], ip[3]);
+  if (ip[0] == 0)
+  {
+    sprintf(buffer, "IP  : ---.---.---.---");
+  }
+  else
+  {
+    sprintf(buffer, "IP  : %03d.%03d.%03d.%03d", ip[0],ip[1], ip[2], ip[3]);
+  }
   tft.drawString(buffer, 12, 50);
 
   _set_ip_link_led(link_status);
@@ -702,20 +718,18 @@ void OXRS_LCD::_update_io_48 (uint8_t type, uint8_t index, int active)
 /*
  * animated "leds"
  */
-void OXRS_LCD::_set_mqtt_rx_led(int active)
+void OXRS_LCD::_set_mqtt_rx_led(int state)
 {
-  uint16_t color;
- 
-  color = active ? TFT_YELLOW : TFT_DARKGREY;
-  tft.fillRoundRect(2, 80, 8, 5, 2,  color);
+  uint16_t color[3] = {TFT_DARKGREY, TFT_YELLOW, TFT_RED};
+  
+  if (state < 3) tft.fillRoundRect(2, 80, 8, 5, 2,  color[state]);
 }
 
-void OXRS_LCD::_set_mqtt_tx_led(int active)
+void OXRS_LCD::_set_mqtt_tx_led(int state)
 {
-  uint16_t color;
- 
-  color = active ? TFT_ORANGE : TFT_DARKGREY;
-  tft.fillRoundRect(2, 88, 8, 5, 2,  color);
+   uint16_t color[3] = {TFT_DARKGREY, TFT_ORANGE, TFT_RED};
+
+  if (state < 3) tft.fillRoundRect(2, 88, 8, 5, 2,  color[state]);
 }
 
 void OXRS_LCD::_set_ip_link_led(int active)

@@ -46,6 +46,7 @@ class OXRS_LCD
     void loop(void);
     void trigger_mqtt_rx_led (void);
     void trigger_mqtt_tx_led (void);
+    void show_mqtt_not_connected (void);
 
     
   private:  
@@ -85,8 +86,8 @@ class OXRS_LCD
     void _update_io_48(uint8_t type, uint8_t index, int active);
     void _clear_event(void);
     void _set_backlight(int val);
-    void _set_mqtt_rx_led(int active);
-    void _set_mqtt_tx_led(int active);
+    void _set_mqtt_rx_led(int state);
+    void _set_mqtt_tx_led(int state);
     void _set_ip_link_led(int active);
 };
 
