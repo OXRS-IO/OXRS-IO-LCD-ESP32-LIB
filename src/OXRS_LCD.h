@@ -30,6 +30,12 @@
 #define BL_PWM_CHANNEL      0
 #define BL_PWM_RESOLUTION   8
 
+// MQTT led states
+#define MQTT_STATE_IDLE         0
+#define MQTT_STATE_ACTIVE       1
+#define MQTT_STATE_DOWN         2
+
+
 
 class OXRS_LCD
 {
@@ -46,7 +52,7 @@ class OXRS_LCD
     void loop(void);
     void trigger_mqtt_rx_led (void);
     void trigger_mqtt_tx_led (void);
-    void show_mqtt_not_connected (void);
+    void show_mqtt_connection_status (bool state);
 
     
   private:  

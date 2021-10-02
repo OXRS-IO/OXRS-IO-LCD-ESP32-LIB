@@ -147,8 +147,8 @@ void OXRS_LCD::show_MQTT_topic (char * topic)
   sprintf(buffer, "MQTT: %s",topic);
   tft.drawString(buffer, 12, 80);
 
-  _set_mqtt_rx_led(2);
-  _set_mqtt_tx_led(2); 
+  _set_mqtt_rx_led(MQTT_STATE_DOWN);
+  _set_mqtt_tx_led(MQTT_STATE_DOWN); 
 }
 
 
@@ -268,22 +268,30 @@ void OXRS_LCD::_clear_event ()
  */
 void OXRS_LCD::trigger_mqtt_rx_led (void)
 {
-  _set_mqtt_rx_led(1);
+  _set_mqtt_rx_led(MQTT_STATE_ACTIVE);
   _last_rx_trigger = millis(); 
 }
 
 void OXRS_LCD::trigger_mqtt_tx_led (void)
 {
-  _set_mqtt_tx_led(1);
+  _set_mqtt_tx_led(MQTT_STATE_ACTIVE);
   _last_tx_trigger = millis(); 
 }
 
-void OXRS_LCD::show_mqtt_not_connected (void)
+void OXRS_LCD::show_mqtt_connection_status (bool state)
 {
-  _set_mqtt_tx_led(2);
-  _set_mqtt_rx_led(2);
-  _last_tx_trigger = 0L;
-  _last_rx_trigger = 0L;
+  if (!state)
+  {
+    _set_mqtt_tx_led(MQTT_STATE_DOWN);
+    _set_mqtt_rx_led(MQTT_STATE_DOWN);
+    _last_tx_trigger = 0L;
+    _last_rx_trigger = 0L;
+  }
+  else
+  {
+    _set_mqtt_tx_led(MQTT_STATE_IDLE);
+    _set_mqtt_rx_led(MQTT_STATE_IDLE);
+  }
 }
 
 /*
@@ -366,7 +374,7 @@ void OXRS_LCD::loop(void)
   {
     if ((millis() - _last_rx_trigger) > RX_TX_LED_ON)
     {
-      _set_mqtt_rx_led(0);
+      _set_mqtt_rx_led(MQTT_STATE_IDLE);
       _last_rx_trigger = 0L;
     }
   }
@@ -376,7 +384,7 @@ void OXRS_LCD::loop(void)
   {
     if ((millis() - _last_tx_trigger) > RX_TX_LED_ON)
     {
-      _set_mqtt_tx_led(0);
+      _set_mqtt_tx_led(MQTT_STATE_IDLE);
       _last_tx_trigger = 0L;
     }
   }
