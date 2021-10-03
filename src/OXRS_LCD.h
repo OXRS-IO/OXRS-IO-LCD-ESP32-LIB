@@ -2,13 +2,13 @@
 #ifndef OXRS_LCD_H
 #define OXRS_LCD_H
 
-#include <TFT_eSPI.h>               // Hardware-specific library
-#include "bitmaps.h"                // images bitmaps
-#include "Free_Fonts.h"             // Include the header file attached to this sketch
-#include "roboto_fonts.h"
 #include <Ethernet.h>
 #include <WiFi.h>
+#if defined(ARDUINO_ARCH_ESP32)
 #include <SPIFFS.h>
+#elif defined(ARDUINO_ARCH_ESP8266)
+#include <FS.h>
+#endif
 
 #define TYPE_FRAME 0
 #define TYPE_STATE 1
@@ -44,7 +44,7 @@ class OXRS_LCD
     OXRS_LCD(EthernetClass& ethernet);
     OXRS_LCD(WiFiClass& wifi);
     void begin (uint32_t ontime_event=LCD_EVENT_MS, uint32_t ontime_display=LCD_ON_MS);
-    void draw_header(const char * fw_maker_code, const char * fw_name, const char * fw_version, const char * fw_platform );
+    void draw_header(const char * fw_maker_code, const char * fw_maker_name, const char * fw_name, const char * fw_version, const char * fw_platform );
     void draw_ports (int port_layout, uint8_t mcps_found);
     void show_MQTT_topic (char * topic);
     void show_temp (float temperature);
@@ -54,7 +54,6 @@ class OXRS_LCD
     void trigger_mqtt_rx_led (void);
     void trigger_mqtt_tx_led (void);
     void show_mqtt_connection_status (bool state);
-
 
     
   private:  
@@ -81,7 +80,6 @@ class OXRS_LCD
     uint16_t _io_values[8];
     
     // LCD
-    TFT_eSPI tft = TFT_eSPI();   // Invoke library
 
     void _oxrs_lcd (void);
     void _show_ethernet(void);
@@ -97,7 +95,7 @@ class OXRS_LCD
     void _set_mqtt_rx_led(int state);
     void _set_mqtt_tx_led(int state);
     void _set_ip_link_led(int active);
-    void _drawBmp(const char *filename, int16_t x, int16_t y);
+    bool _drawBmp(const char *filename, int16_t x, int16_t y);
     uint16_t _read16(File &f);
     uint32_t _read32(File &f);   
 };

@@ -1,22 +1,12 @@
 
 #include "Arduino.h"
 #include "OXRS_LCD.h"
-#include <ArduinoJson.h>
+#include <TFT_eSPI.h>               // Hardware-specific library
+#include "bitmaps.h"                // images bitmaps
+#include "Free_Fonts.h"             // Include the header file attached to this sketch
+#include "roboto_fonts.h"
 
-
-
-
-// makers taken from https://oxrs.io/glossary/makers.html
-PROGMEM const char maker_table[] = {
-                            "[{\"code\":\"AC\",\"name\":\"Austin's Creations\"},"
-                            "{\"code\":\"BC\",\"name\":\"BetterCorp\"},"
-                            "{\"code\":\"BMD\",\"name\":\"Bedrock Media Designs\"},"
-                            "{\"code\":\"DEN\",\"name\":\"Dennistries Ltd\"},"
-                            "{\"code\":\"FMA\",\"name\":\"Frank McAlinden\"},"
-                            "{\"code\":\"IO\",\"name\":\"OXRS Core Team\"},"
-                            "{\"code\":\"SHA\",\"name\":\"SuperHouse Automation\"}"
-                            "]" };
-
+TFT_eSPI tft = TFT_eSPI();          // Invoke library
 
 // for ethernet
 OXRS_LCD::OXRS_LCD (EthernetClass& ethernet)
@@ -57,18 +47,18 @@ void OXRS_LCD::begin (uint32_t ontime_event, uint32_t ontime_display)
   
   _ontime_display = ontime_display;
   _ontime_event = ontime_event;
-  
-  // rethink the following
-  // after SPIFFS is enabled during startup already
-  if (!SPIFFS.begin()) {
-    Serial.println("SPIFFS initialisation failed!");
-    while (1) yield(); // Stay here twiddling thumbs waiting
+
+  Serial.print(F("[file] mounting SPIFFS..."));
+  if (!SPIFFS.begin())
+  { 
+    Serial.println(F("failed, might need formatting?"));
+    return; 
   }
-  Serial.println("\r\nSPIFFS initialised."); 
+  Serial.println(F("done"));
 }
 
 
-void OXRS_LCD::draw_header(const char * fw_maker_code, const char * fw_name, const char * fw_version, const char * fw_platform )
+void OXRS_LCD::draw_header(const char * fw_maker_code, const char * fw_maker_name, const char * fw_name, const char * fw_version, const char * fw_platform )
 {
   char buffer[30];
 
@@ -78,47 +68,12 @@ void OXRS_LCD::draw_header(const char * fw_maker_code, const char * fw_name, con
   const unsigned char * logo_bm = oxrs40;
   uint16_t logo_fg = tft.color565(167, 239, 225);
   uint16_t logo_bg = tft.color565(45, 74, 146);
-  const char * maker_name = NULL;
-  
-  // find maker name to print in header
-  DynamicJsonDocument lut(512);
-  deserializeJson(lut, maker_table);
 
-  JsonArray array = lut.as<JsonArray>();
-  for (JsonVariant v : array)
-  {
-    if (strcmp(v["code"], fw_maker_code) == 0)
-    {
-      maker_name = (const char*)v["name"];
-    }
-  }
-
-  if (strcmp("SHA", fw_maker_code) == 0)
-  {
-    logo_h = sha40Height;
-    logo_w = sha40Width;
-    logo_bm = sha40;
-    logo_fg = tft.color565(0, 165, 179);
-    logo_bg = TFT_WHITE;
-  }
-  if (strcmp("AC", fw_maker_code) == 0)
-  {
-    logo_h = ac40Height;
-    logo_w = ac40Width;
-    logo_bm = ac40;
-    logo_fg = TFT_WHITE;
-    logo_bg = TFT_BROWN;
-  }
-  if (strcmp("BMD", fw_maker_code) == 0)
-  {
-    logo_h = bmd40Height;
-    logo_w = bmd40Width;
-    logo_bm = bmd40;
-    logo_fg = TFT_WHITE;
-    logo_bg = TFT_BLUE;
-  }
  
-  _drawBmp("/logo.bmp", 0, 0);
+  if (!_drawBmp("/logo.bmp", 0, 0))
+  {
+    tft.drawBitmap(0, 0, logo_bm, logo_w, logo_h, logo_fg, logo_bg);
+  }
 
   tft.fillRect(42, 0, 240, 40,  TFT_WHITE);
   tft.setTextDatum(TL_DATUM);
@@ -127,17 +82,8 @@ void OXRS_LCD::draw_header(const char * fw_maker_code, const char * fw_name, con
   
   tft.drawString(fw_name, 46, 0);
 
-  if (maker_name == NULL)
-  {
-    tft.drawString("Maker", 46, 13);
-    sprintf(buffer, ": %s", fw_maker_code);
-    tft.drawString(buffer, 46+50, 13);
-  } 
-  else
-  {
-    tft.drawString(maker_name, 46, 13);
-  }
-  
+  tft.drawString(fw_maker_name, 46, 13);
+ 
   tft.drawString("Version", 46, 26); 
   sprintf(buffer, ": %s / %s", fw_version, fw_platform); 
   tft.drawString(buffer, 46+50, 26); 
@@ -773,42 +719,45 @@ void OXRS_LCD::_set_backlight(int val)
 
 // Bodmers BMP image rendering function
 
-void OXRS_LCD::_drawBmp(const char *filename, int16_t x, int16_t y) 
+bool OXRS_LCD::_drawBmp(const char *filename, int16_t x, int16_t y) 
 {
-  uint32_t seekOffset;
-  uint16_t w, h, row, col;
-  uint8_t  r, g, b;
-  File bmpFS;
+  uint32_t  seekOffset;
+  uint16_t  w, h, row, col;
+  uint8_t   r, g, b;
+  bool      drawn = true;
 
-  // Open requested file on SPIFFS
-  bmpFS = SPIFFS.open(filename, "r");
-  if (!bmpFS)
+  Serial.print(F("[file] reading "));  
+  Serial.print(filename);
+  Serial.print(F("..."));
+
+  File file = SPIFFS.open(filename, "r");
+  if (!file) 
   {
-    Serial.println(F("[lcd] File not found"));
-    return;
+    Serial.println(F("failed to open file"));
+    return false;
   }
 
-  if (_read16(bmpFS) == 0x4D42)
+  if (_read16(file) == 0x4D42)
   {
-    _read32(bmpFS);
-    _read32(bmpFS);
-    seekOffset = _read32(bmpFS);
-    _read32(bmpFS);
-    w = _read32(bmpFS);
-    h = _read32(bmpFS);
+    _read32(file);
+    _read32(file);
+    seekOffset = _read32(file);
+    _read32(file);
+    w = _read32(file);
+    h = _read32(file);
     if ((w != 40) || (h != 40))
     {
-      Serial.println(F("[lcd] logo size not 40x40"));
+      Serial.println(F("[lcd ] warning! logo size not 40x40"));
     }
 
-    if ((_read16(bmpFS) == 1) && (_read16(bmpFS) == 24) && (_read32(bmpFS) == 0))
+    if ((_read16(file) == 1) && (_read16(file) == 24) && (_read32(file) == 0))
     {
       // crop to h = 40
       y += 40 - 1;
 
       bool oldSwapBytes = tft.getSwapBytes();
       tft.setSwapBytes(true);
-      bmpFS.seek(seekOffset);
+      file.seek(seekOffset);
 
       uint16_t padding = (4 - ((w * 3) & 3)) & 3;
       uint8_t lineBuffer[w * 3 + padding];
@@ -816,7 +765,7 @@ void OXRS_LCD::_drawBmp(const char *filename, int16_t x, int16_t y)
       for (row = 0; row < h; row++)
       {
         
-        bmpFS.read(lineBuffer, sizeof(lineBuffer));
+        file.read(lineBuffer, sizeof(lineBuffer));
         uint8_t*  bptr = lineBuffer;
         uint16_t* tptr = (uint16_t*)lineBuffer;
         // Convert 24 to 16 bit colours
@@ -835,9 +784,17 @@ void OXRS_LCD::_drawBmp(const char *filename, int16_t x, int16_t y)
       }
       tft.setSwapBytes(oldSwapBytes);
     }
-    else Serial.println(F("[lcd] BMP format not recognized."));
+    else 
+    {
+      Serial.println(F("done"));
+      Serial.println(F("[lcd ] bmp format not recognized."));
+      file.close();
+      return false;
+    }
   }
-  bmpFS.close();
+  file.close();
+  Serial.println(F("done"));
+  return true;
 }
 
 // These read 16- and 32-bit types from the SD card file.
