@@ -58,7 +58,7 @@ void OXRS_LCD::begin (uint32_t ontime_event, uint32_t ontime_display)
 }
 
 
-void OXRS_LCD::draw_header(const char * fw_maker_code, const char * fw_maker_name, const char * fw_name, const char * fw_version, const char * fw_platform )
+void OXRS_LCD::draw_header(const char * fw_maker, const char * fw_name, const char * fw_version, const char * fw_platform )
 {
   char buffer[30];
 
@@ -82,7 +82,7 @@ void OXRS_LCD::draw_header(const char * fw_maker_code, const char * fw_maker_nam
   
   tft.drawString(fw_name, 46, 0);
 
-  tft.drawString(fw_maker_name, 46, 13);
+  tft.drawString(fw_maker, 46, 13);
  
   tft.drawString("Version", 46, 26); 
   sprintf(buffer, ": %s / %s", fw_version, fw_platform); 
