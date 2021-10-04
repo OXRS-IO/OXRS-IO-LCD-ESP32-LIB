@@ -783,18 +783,16 @@ bool OXRS_LCD::_drawBmp(const char *filename, int16_t x, int16_t y)
         tft.pushImage(x, y--, 40, 1, (uint16_t*)lineBuffer);
       }
       tft.setSwapBytes(oldSwapBytes);
-    }
-    else 
-    {
-      Serial.println(F("done"));
-      Serial.println(F("[lcd ] bmp format not recognized."));
+
       file.close();
-      return false;
+      Serial.println(F("done"));
+      return true;
     }
   }
   file.close();
   Serial.println(F("done"));
-  return true;
+  Serial.println(F("[lcd ] bmp format not recognized."));
+  return false;
 }
 
 // These read 16- and 32-bit types from the SD card file.
