@@ -44,7 +44,7 @@ class OXRS_LCD
     OXRS_LCD(EthernetClass& ethernet);
     OXRS_LCD(WiFiClass& wifi);
     void begin (uint32_t ontime_event=LCD_EVENT_MS, uint32_t ontime_display=LCD_ON_MS);
-    void draw_header(const char * fw_maker, const char * fw_name, const char * fw_version, const char * fw_platform );
+    void draw_header(const char * fwShortName, const char * fwMaker, const char * fwVersion, const char * fwPlatform);
     void draw_ports (int port_layout, uint8_t mcps_found);
     void show_MQTT_topic (char * topic);
     void show_temp (float temperature);

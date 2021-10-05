@@ -58,7 +58,7 @@ void OXRS_LCD::begin (uint32_t ontime_event, uint32_t ontime_display)
 }
 
 
-void OXRS_LCD::draw_header(const char * fw_maker, const char * fw_name, const char * fw_version, const char * fw_platform )
+void OXRS_LCD::draw_header(const char * fwShortName, const char * fwMaker, const char * fwVersion, const char * fwPlatform)
 {
   char buffer[30];
 
@@ -69,7 +69,8 @@ void OXRS_LCD::draw_header(const char * fw_maker, const char * fw_name, const ch
   uint16_t logo_fg = tft.color565(167, 239, 225);
   uint16_t logo_bg = tft.color565(45, 74, 146);
 
- 
+  // try to draw maker supplied logo.bmp from SPIFFS
+  // if no valid file found, draw default OXRS logo stored in PROGMEM
   if (!_drawBmp("/logo.bmp", 0, 0))
   {
     tft.drawBitmap(0, 0, logo_bm, logo_w, logo_h, logo_fg, logo_bg);
@@ -80,12 +81,12 @@ void OXRS_LCD::draw_header(const char * fw_maker, const char * fw_name, const ch
   tft.setTextColor(TFT_BLACK);
   tft.setFreeFont(&Roboto_Light_13);
   
-  tft.drawString(fw_name, 46, 0);
+  tft.drawString(fwShortName, 46, 0);
 
-  tft.drawString(fw_maker, 46, 13);
+  tft.drawString(fwMaker, 46, 13);
  
   tft.drawString("Version", 46, 26); 
-  sprintf(buffer, ": %s / %s", fw_version, fw_platform); 
+  sprintf(buffer, ": %s / %s", fwVersion, fwPlatform); 
   tft.drawString(buffer, 46+50, 26); 
   
   tft.setTextColor(TFT_WHITE);
