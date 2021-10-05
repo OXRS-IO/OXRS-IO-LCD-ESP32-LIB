@@ -106,8 +106,10 @@ void OXRS_LCD::show_MQTT_topic (char * topic)
   sprintf(buffer, "MQTT: %s",topic);
   tft.drawString(buffer, 12, 80);
 
-  _set_mqtt_rx_led(MQTT_STATE_DOWN);
-  _set_mqtt_tx_led(MQTT_STATE_DOWN); 
+  // show idle activity until we get an explicit connection 
+  // status update via show_mqtt_connection_status()
+  _set_mqtt_tx_led(MQTT_STATE_IDLE);
+  _set_mqtt_rx_led(MQTT_STATE_IDLE);
 }
 
 
