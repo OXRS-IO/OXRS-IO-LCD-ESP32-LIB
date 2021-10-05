@@ -18,6 +18,7 @@ process						KEYWORD2
 loop						KEYWORD2
 trigger_mqtt_rx_led			KEYWORD2
 trigger_mqtt_tx_led			KEYWORD2
+show_mqtt_connection_status	KEYWORD2
 
 #######################################
 # Constants (LITERAL1)
@@ -26,4 +27,4 @@ trigger_mqtt_tx_led			KEYWORD2
 PORT_LAYOUT_INPUT_96		LITERAL1
 PORT_LAYOUT_INPUT_128		LITERAL1
 PORT_LAYOUT_OUTPUT_128		LITERAL1
-PORT_LAYOUT_IO_48		LITERAL1
+PORT_LAYOUT_IO_48			LITERAL1
