@@ -16,9 +16,9 @@ show_temp					KEYWORD2
 show_event					KEYWORD2
 process						KEYWORD2
 loop						KEYWORD2
-trigger_mqtt_rx_led			KEYWORD2
-trigger_mqtt_tx_led			KEYWORD2
-show_mqtt_connection_status	KEYWORD2
+trigger_mqtt_rx_led			      KEYWORD2
+trigger_mqtt_tx_led		        KEYWORD2
+show_mqtt_connection_status   KEYWORD2
 
 #######################################
 # Constants (LITERAL1)
