@@ -3,11 +3,14 @@
 #define OXRS_LCD_H
 
 #include <Ethernet.h>
+
+#if defined(ESP8266)
+#include <ESP8266WiFi.h>
+#include <LittleFS.h>
+#define SPIFFS LittleFS
+#else
 #include <WiFi.h>
-#if defined(ARDUINO_ARCH_ESP32)
 #include <SPIFFS.h>
-#elif defined(ARDUINO_ARCH_ESP8266)
-#include <FS.h>
 #endif
 
 #define TYPE_FRAME 0
