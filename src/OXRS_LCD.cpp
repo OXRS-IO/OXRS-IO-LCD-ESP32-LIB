@@ -48,7 +48,7 @@ void OXRS_LCD::begin (uint32_t ontime_event, uint32_t ontime_display)
   _ontime_display = ontime_display;
   _ontime_event = ontime_event;
 
-  Serial.print(F("[file] mounting SPIFFS..."));
+  Serial.print(F("[lcd ] mounting SPIFFS..."));
   if (!SPIFFS.begin())
   { 
     Serial.println(F("failed, might need formatting?"));
@@ -730,7 +730,7 @@ bool OXRS_LCD::_drawBmp(const char *filename, int16_t x, int16_t y)
   uint8_t   r, g, b;
   bool      drawn = true;
 
-  Serial.print(F("[file] reading "));  
+  Serial.print(F("[lcd ] reading "));  
   Serial.print(filename);
   Serial.print(F("..."));
 
