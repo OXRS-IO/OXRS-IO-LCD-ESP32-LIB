@@ -63,15 +63,15 @@ void OXRS_LCD::draw_header(const char * fwShortName, const char * fwMaker, const
   char buffer[30];
 
   // default logo is OXRS
-  int logo_h = oxrs40Height;
   int logo_w = oxrs40Width;
+  int logo_h = oxrs40Height;
   const unsigned char * logo_bm = oxrs40;
   uint16_t logo_fg = tft.color565(167, 239, 225);
   uint16_t logo_bg = tft.color565(45, 74, 146);
 
   // try to draw maker supplied logo.bmp from SPIFFS
   // if no valid file found, draw default OXRS logo stored in PROGMEM
-  if (!_drawBmp("/logo.bmp", 0, 0))
+  if (!_drawBmp("/logo.bmp", 0, 0, logo_w, logo_h))
   {
     tft.drawBitmap(0, 0, logo_bm, logo_w, logo_h, logo_fg, logo_bg);
   }
@@ -723,7 +723,7 @@ void OXRS_LCD::_set_backlight(int val)
 
 // Bodmers BMP image rendering function
 
-bool OXRS_LCD::_drawBmp(const char *filename, int16_t x, int16_t y) 
+bool OXRS_LCD::_drawBmp(const char *filename, int16_t x, int16_t y, int16_t bmp_w, int16_t bmp_h) 
 {
   uint32_t  seekOffset;
   uint16_t  w, h, row, col;
@@ -740,6 +740,15 @@ bool OXRS_LCD::_drawBmp(const char *filename, int16_t x, int16_t y)
     Serial.println(F("failed to open file"));
     return false;
   }
+  
+  if (file.size() == 0)
+  {
+    Serial.println(F("not found"));
+    return false;
+  }
+
+  Serial.print(file.size());
+  Serial.println(F(" bytes read"));
 
   if (_read16(file) == 0x4D42)
   {
@@ -749,15 +758,18 @@ bool OXRS_LCD::_drawBmp(const char *filename, int16_t x, int16_t y)
     _read32(file);
     w = _read32(file);
     h = _read32(file);
-    if ((w != 40) || (h != 40))
+    if ((w != bmp_w) || (h != bmp_h))
     {
-      Serial.println(F("[lcd ] warning! logo size not 40x40"));
+      Serial.print(F("[lcd ] warning! bmp not "));
+      Serial.print(bmp_w);
+      Serial.print(F("x"));
+      Serial.println(bmp_h);
     }
 
     if ((_read16(file) == 1) && (_read16(file) == 24) && (_read32(file) == 0))
     {
-      // crop to h = 40
-      y += 40 - 1;
+      // crop to bmp_h
+      y += bmp_h - 1;
 
       bool oldSwapBytes = tft.getSwapBytes();
       tft.setSwapBytes(true);
@@ -768,7 +780,6 @@ bool OXRS_LCD::_drawBmp(const char *filename, int16_t x, int16_t y)
 
       for (row = 0; row < h; row++)
       {
-        
         file.read(lineBuffer, sizeof(lineBuffer));
         uint8_t*  bptr = lineBuffer;
         uint16_t* tptr = (uint16_t*)lineBuffer;
@@ -783,19 +794,19 @@ bool OXRS_LCD::_drawBmp(const char *filename, int16_t x, int16_t y)
 
         // Push the pixel row to screen, pushImage will crop the line if needed
         // y is decremented as the BMP image is drawn bottom up
-        // crop to w = 40
-        tft.pushImage(x, y--, 40, 1, (uint16_t*)lineBuffer);
+        // crop to bmp_w
+        tft.pushImage(x, y--, bmp_w, 1, (uint16_t*)lineBuffer);
       }
       tft.setSwapBytes(oldSwapBytes);
 
       file.close();
-      Serial.println(F("done"));
+      Serial.println(F("[lcd ] bmp loaded ok"));
       return true;
     }
   }
+  
   file.close();
-  Serial.println(F("done"));
-  Serial.println(F("[lcd ] bmp format not recognized."));
+  Serial.println(F("[lcd ] bmp format not recognized"));
   return false;
 }
 

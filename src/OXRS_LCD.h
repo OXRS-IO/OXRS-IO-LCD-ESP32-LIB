@@ -95,7 +95,7 @@ class OXRS_LCD
     void _set_mqtt_rx_led(int state);
     void _set_mqtt_tx_led(int state);
     void _set_ip_link_led(int active);
-    bool _drawBmp(const char *filename, int16_t x, int16_t y);
+    bool _drawBmp(const char *filename, int16_t x, int16_t y, int16_t bmp_w, int16_t bmp_h);
     uint16_t _read16(File &f);
     uint32_t _read32(File &f);   
 };
