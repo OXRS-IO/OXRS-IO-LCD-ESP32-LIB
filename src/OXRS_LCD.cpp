@@ -92,7 +92,7 @@ void OXRS_LCD::draw_header(const char * fwShortName, const char * fwMaker, const
   tft.setTextColor(TFT_WHITE);
   tft.setTextDatum(TC_DATUM);
   tft.setFreeFont(&Roboto_Mono_Thin_13);
-  tft.drawString("connecting...", 240/2 , 50); 
+  tft.drawString("Starting up...", 240/2 , 50); 
 }
 
 
