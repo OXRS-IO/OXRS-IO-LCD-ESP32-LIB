@@ -2,7 +2,7 @@
 # Datatypes (KEYWORD1)
 #######################################
 
-OXRS_LCD					KEYWORD1
+OXRS_LCD                     KEYWORD1
 
 #######################################
 # Methods and Functions (KEYWORD2)
