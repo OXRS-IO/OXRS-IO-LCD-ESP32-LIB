@@ -92,18 +92,19 @@ void OXRS_LCD::draw_header(const char * fwShortName, const char * fwMaker, const
   tft.setTextColor(TFT_WHITE);
   tft.setTextDatum(TC_DATUM);
   tft.setFreeFont(&Roboto_Mono_Thin_13);
-  tft.drawString("connecting ...", 240/2 , 50); 
+  tft.drawString("connecting...", 240/2 , 50); 
 }
 
 
-void OXRS_LCD::show_MQTT_topic (char * topic)
+void OXRS_LCD::show_MQTT_topic (const char * topic)
 {
   char buffer[30];
 
+  tft.fillRect(0, 80, 240, 13,  TFT_BLACK);
   tft.setTextColor(TFT_WHITE);
   tft.setTextDatum(TL_DATUM);
   tft.setFreeFont(&Roboto_Mono_Thin_13);
-  sprintf(buffer, "MQTT: %s",topic);
+  sprintf(buffer, "MQTT: %s", topic);
   tft.drawString(buffer, 12, 80);
 
   // show idle activity until we get an explicit connection 
@@ -204,7 +205,7 @@ void OXRS_LCD::draw_ports (int port_layout, uint8_t mcps_found)
 /*
  * draw event on bottom line of screen
  */
-void OXRS_LCD::show_event (char * s_event)
+void OXRS_LCD::show_event (const char * s_event)
 {
   // Show last input event on bottom line
   tft.fillRect(0, 225, 240, 240,  TFT_WHITE);

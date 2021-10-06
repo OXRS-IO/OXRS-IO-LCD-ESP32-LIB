@@ -46,9 +46,9 @@ class OXRS_LCD
     void begin (uint32_t ontime_event=LCD_EVENT_MS, uint32_t ontime_display=LCD_ON_MS);
     void draw_header(const char * fwShortName, const char * fwMaker, const char * fwVersion, const char * fwPlatform);
     void draw_ports (int port_layout, uint8_t mcps_found);
-    void show_MQTT_topic (char * topic);
+    void show_MQTT_topic (const char * topic);
     void show_temp (float temperature);
-    void show_event (char * s_event);
+    void show_event (const char * s_event);
     void process (int mcp, uint16_t io_value);
     void loop(void);
     void trigger_mqtt_rx_led (void);
