@@ -1,6 +1,6 @@
-
 #include "Arduino.h"
 #include "OXRS_LCD.h"
+
 #include <TFT_eSPI.h>               // Hardware-specific library
 #include "bitmaps.h"                // images bitmaps
 #include "Free_Fonts.h"             // Include the header file attached to this sketch
@@ -9,54 +9,24 @@
 TFT_eSPI tft = TFT_eSPI();          // Invoke library
 
 // for ethernet
-OXRS_LCD::OXRS_LCD (EthernetClass& ethernet)
+OXRS_LCD::OXRS_LCD(EthernetClass& ethernet, OXRS_MQTT& mqtt)
 {
   _wifi = NULL;
   _ethernet = &ethernet;
-  _oxrs_lcd();
-}
-// for wifi
-OXRS_LCD::OXRS_LCD (WiFiClass& wifi)
-{
-  _wifi = &wifi;
-  _ethernet = NULL;
-  _oxrs_lcd();
-}
-// common
-void OXRS_LCD::_oxrs_lcd (void)
-{
-  _last_lcd_trigger = 0L;
-  _last_event_display = 0L;  
-  _last_rx_trigger = 0L;
-  _last_tx_trigger = 0L;
-  _ethernet_link_status = Unknown;
-  _wifi_connection_status = WL_IDLE_STATUS;
+  _mqtt = &mqtt;
+
   memset(_io_values, 0, sizeof(_io_values));
 }
 
-void OXRS_LCD::begin (uint32_t ontime_event, uint32_t ontime_display)
+// for wifi
+OXRS_LCD::OXRS_LCD(WiFiClass& wifi, OXRS_MQTT& mqtt)
 {
-  tft.begin();               // Initialise the display
-  tft.setRotation(1);
-  tft.fillRect(0, 0, 240, 240,  TFT_BLACK);
+  _wifi = &wifi;
+  _ethernet = NULL;
+  _mqtt = &mqtt;
 
-  // set up for backlight dimming (PWM)
-  ledcSetup(BL_PWM_CHANNEL, BL_PWM_FREQ, BL_PWM_RESOLUTION);
-  ledcAttachPin(TFT_BL, BL_PWM_CHANNEL);
-  _set_backlight(LCD_BL_ON);
-  
-  _ontime_display = ontime_display;
-  _ontime_event = ontime_event;
-
-  Serial.print(F("[lcd ] mounting SPIFFS..."));
-  if (!SPIFFS.begin())
-  { 
-    Serial.println(F("failed, might need formatting?"));
-    return; 
-  }
-  Serial.println(F("done"));
+  memset(_io_values, 0, sizeof(_io_values));
 }
-
 
 void OXRS_LCD::draw_header(const char * fwShortName, const char * fwMaker, const char * fwVersion, const char * fwPlatform)
 {
@@ -82,7 +52,6 @@ void OXRS_LCD::draw_header(const char * fwShortName, const char * fwMaker, const
   tft.setFreeFont(&Roboto_Light_13);
   
   tft.drawString(fwShortName, 46, 0);
-
   tft.drawString(fwMaker, 46, 13);
  
   tft.drawString("Version", 46, 26); 
@@ -95,43 +64,13 @@ void OXRS_LCD::draw_header(const char * fwShortName, const char * fwMaker, const
   tft.drawString("Starting up...", 240/2 , 50); 
 }
 
-
-void OXRS_LCD::show_MQTT_topic (const char * topic)
-{
-  char buffer[30];
-
-  tft.fillRect(0, 80, 240, 13,  TFT_BLACK);
-  tft.setTextColor(TFT_WHITE);
-  tft.setTextDatum(TL_DATUM);
-  tft.setFreeFont(&Roboto_Mono_Thin_13);
-  sprintf(buffer, "MQTT: %s", topic);
-  tft.drawString(buffer, 12, 80);
-
-  // show idle activity until we get an explicit connection 
-  // status update via show_mqtt_connection_status()
-  _set_mqtt_tx_led(MQTT_STATE_IDLE);
-  _set_mqtt_rx_led(MQTT_STATE_IDLE);
-}
-
-
-void OXRS_LCD::show_temp (float temperature)
-{
-  char buffer[30];
-  
-  tft.fillRect(0, 95, 240, 13,  TFT_BLACK);
-  tft.setTextColor(TFT_WHITE);
-  tft.setTextDatum(TL_DATUM);
-  tft.setFreeFont(&Roboto_Mono_Thin_13);
-  sprintf(buffer, "TEMP: %2.1f C", temperature);
-  tft.drawString(buffer, 12, 95);
-}
-
 /*
  * draw ports with inactive inputs on screen 
  */
-void OXRS_LCD::draw_ports (int port_layout, uint8_t mcps_found)
+void OXRS_LCD::draw_ports(int port_layout, uint8_t mcps_found)
 { 
   _port_layout = port_layout;
+  
   if (_port_layout == PORT_LAYOUT_INPUT_96)
   {
     for (int index = 1; index <= 96; index += 16)
@@ -151,7 +90,6 @@ void OXRS_LCD::draw_ports (int port_layout, uint8_t mcps_found)
 
   if (_port_layout == PORT_LAYOUT_INPUT_128)
   {
-    
     for (int index = 1; index <= 128; index += 16)
     {
       int active = (bitRead(mcps_found, 0)) ? 1 : 0;
@@ -185,7 +123,6 @@ void OXRS_LCD::draw_ports (int port_layout, uint8_t mcps_found)
   
   if (_port_layout == PORT_LAYOUT_IO_48)
   {    
-
     for (int index = 1; index <= 48; index += 16)
     {
       for (int i = 0; i < 16; i++)
@@ -199,61 +136,30 @@ void OXRS_LCD::draw_ports (int port_layout, uint8_t mcps_found)
       mcps_found >>= 1;
     }  
   }
-
 }
 
-/*
- * draw event on bottom line of screen
- */
-void OXRS_LCD::show_event (const char * s_event)
+void OXRS_LCD::begin(uint32_t ontime_event, uint32_t ontime_display)
 {
-  // Show last input event on bottom line
-  tft.fillRect(0, 225, 240, 240,  TFT_WHITE);
-  tft.setTextColor(TFT_BLACK, TFT_WHITE);
-  tft.setTextDatum(TL_DATUM);
-  tft.setFreeFont(FMB9);       // Select Free Mono Bold 9
-  tft.drawString(s_event, 10, 225);
-  tft.setTextColor(TFT_WHITE, TFT_BLACK);
-  _last_event_display = millis(); 
-}
+  // initialise the display
+  tft.begin();
+  tft.setRotation(1);
+  tft.fillRect(0, 0, 240, 240,  TFT_BLACK);
 
-/*
- * clear event 
- */
-void OXRS_LCD::_clear_event ()
-{
-  tft.fillRect(0, 225, 240, 240,  TFT_BLACK);
-}
+  // set up for backlight dimming (PWM)
+  ledcSetup(BL_PWM_CHANNEL, BL_PWM_FREQ, BL_PWM_RESOLUTION);
+  ledcAttachPin(TFT_BL, BL_PWM_CHANNEL);
+  _set_backlight(LCD_BL_ON);
+  
+  _ontime_display = ontime_display;
+  _ontime_event = ontime_event;
 
-/*
- * control mqtt rx/tx virtual leds 
- */
-void OXRS_LCD::trigger_mqtt_rx_led (void)
-{
-  _set_mqtt_rx_led(MQTT_STATE_ACTIVE);
-  _last_rx_trigger = millis(); 
-}
-
-void OXRS_LCD::trigger_mqtt_tx_led (void)
-{
-  _set_mqtt_tx_led(MQTT_STATE_ACTIVE);
-  _last_tx_trigger = millis(); 
-}
-
-void OXRS_LCD::show_mqtt_connection_status (bool state)
-{
-  if (!state)
-  {
-    _set_mqtt_tx_led(MQTT_STATE_DOWN);
-    _set_mqtt_rx_led(MQTT_STATE_DOWN);
-    _last_tx_trigger = 0L;
-    _last_rx_trigger = 0L;
+  Serial.print(F("[lcd ] mounting SPIFFS..."));
+  if (!SPIFFS.begin())
+  { 
+    Serial.println(F("failed, might need formatting?"));
+    return; 
   }
-  else
-  {
-    _set_mqtt_tx_led(MQTT_STATE_IDLE);
-    _set_mqtt_rx_led(MQTT_STATE_IDLE);
-  }
+  Serial.println(F("done"));
 }
 
 /*
@@ -261,23 +167,23 @@ void OXRS_LCD::show_mqtt_connection_status (bool state)
  * check for changes vs last stored value
  * animate port display if change detected
  */
-void OXRS_LCD::process (int mcp, uint16_t io_value)
+void OXRS_LCD::process(int mcp, uint16_t io_value)
 {
   int i, index;
   uint16_t changed;
   
   // Compare with last stored value
   changed = io_value ^ _io_values[mcp];
-  // change detected
   if (changed)
   {
     index = mcp * 16;
-    for (i=0; i<16; i++)
+    for (i = 0; i < 16; i++)
     {
       if (bitRead(changed, i))
       {
         _set_backlight(LCD_BL_ON);
-        _last_lcd_trigger = millis(); 
+        _last_lcd_trigger = millis();
+        
         switch (_port_layout) {
           case PORT_LAYOUT_INPUT_96:
             _update_input_96(TYPE_STATE, index+i+1, !bitRead(io_value, i)); break;
@@ -289,7 +195,8 @@ void OXRS_LCD::process (int mcp, uint16_t io_value)
             if (index < 16)
             {
               _update_io_48(TYPE_STATE, index+i+1, !bitRead(io_value, i));
-            } else
+            } 
+            else
             {
               _update_io_48(TYPE_STATE, index+i+1, bitRead(io_value, i));
             }
@@ -297,6 +204,7 @@ void OXRS_LCD::process (int mcp, uint16_t io_value)
         }
      }
     }
+    
     // Need to store so we can detect changes for port animation
     _io_values[mcp] = io_value;
   }
@@ -351,97 +259,222 @@ void OXRS_LCD::loop(void)
     }
   }
  
-  // check if ethernet link status has changed
-  if (_ethernet) _show_ethernet();
-
-  // check if wifi connection status has changed
-  if (_wifi) _show_wifi();
+  // check if IP or MQTT state has changed
+  _check_IP_state(_get_IP_state());
+  _check_MQTT_state(_get_MQTT_state());
 }
 
-// Ethernet
-void OXRS_LCD::_show_ethernet()
+/*
+ * control mqtt rx/tx virtual leds 
+ */
+void OXRS_LCD::trigger_mqtt_rx_led(void)
 {
-  int current_link_status = _ethernet->linkStatus();
-  if (current_link_status != _ethernet_link_status)
-  {
-    _ethernet_link_status = current_link_status;
-
-    // refresh IP on link status change
-    if (_ethernet_link_status == LinkON)
-    {
-      if (_ethernet->localIP()[0] == 0) {_ethernet_link_status = Unknown;}
-      _show_IP(_ethernet->localIP(), 1);
-    }
-    else
-    {
-      _show_IP(IPAddress(0,0,0,0), 0);
-    }
-
-    // refresh MAC on link status changes
-    byte mac[6];
-    _ethernet->MACAddress(mac);
-    _show_MAC(mac);
-  }
+  _set_mqtt_rx_led(MQTT_STATE_ACTIVE);
+  _last_rx_trigger = millis(); 
 }
 
-// WiFi    TODO : needs to be tested
-void OXRS_LCD::_show_wifi()
+void OXRS_LCD::trigger_mqtt_tx_led(void)
 {
-  int current_connection_status = _wifi->status();
-  if (current_connection_status != _wifi_connection_status)
-  {
-    _wifi_connection_status = current_connection_status;
-
-    // refresh IP on connection status change
-    if (_wifi_connection_status == WL_CONNECTED)
-    {
-      _show_IP(_wifi->localIP(), 1);
-    }
-    else
-    {
-      _show_IP(IPAddress(0,0,0,0), 0);
-    }
-
-    // refresh MAC on connection status changes
-    byte mac[6];
-    _wifi->macAddress(mac);
-    _show_MAC(mac);
-  }
+  _set_mqtt_tx_led(MQTT_STATE_ACTIVE);
+  _last_tx_trigger = millis(); 
 }
 
-// common
-void OXRS_LCD::_show_IP (IPAddress ip, int link_status)
+void OXRS_LCD::show_temp(float temperature)
 {
   char buffer[30];
   
-  tft.fillRect(0, 50, 240, 13,  TFT_BLACK);
+  tft.fillRect(0, 95, 240, 13,  TFT_BLACK);
   tft.setTextColor(TFT_WHITE);
   tft.setTextDatum(TL_DATUM);
   tft.setFreeFont(&Roboto_Mono_Thin_13);
+  sprintf(buffer, "TEMP: %2.1f C", temperature);
+  tft.drawString(buffer, 12, 95);
+}
+
+/*
+ * draw event on bottom line of screen
+ */
+void OXRS_LCD::show_event(const char * s_event)
+{
+  // Show last input event on bottom line
+  tft.fillRect(0, 225, 240, 240,  TFT_WHITE);
+  tft.setTextColor(TFT_BLACK, TFT_WHITE);
+  tft.setTextDatum(TL_DATUM);
+  tft.setFreeFont(FMB9);       // Select Free Mono Bold 9
+  tft.drawString(s_event, 10, 225);
+  tft.setTextColor(TFT_WHITE, TFT_BLACK);
+  _last_event_display = millis(); 
+}
+
+void OXRS_LCD::_clear_event()
+{
+  tft.fillRect(0, 225, 240, 240,  TFT_BLACK);
+}
+
+byte * OXRS_LCD::_get_MAC_address(byte * mac)
+{
+  if (_ethernet)
+  {
+    _ethernet->MACAddress(mac);
+    return mac;
+  }
+
+  if (_wifi)
+  {
+    _wifi->macAddress(mac);
+    return mac;
+  }
+  
+  memset(mac, 0, sizeof(mac));
+  return mac;
+}
+
+IPAddress OXRS_LCD::_get_IP_address(void)
+{
+  if (_get_IP_state() == IP_STATE_UP)
+  {
+    if (_ethernet)
+    {
+      return _ethernet->localIP();
+    }
+
+    if (_wifi)
+    {
+      return _wifi->localIP();
+    }
+  }
+  
+  return IPAddress(0, 0, 0, 0);
+}
+
+int OXRS_LCD::_get_IP_state(void)
+{
+  if (_ethernet)
+  {
+    return _ethernet->linkStatus() == LinkON ? IP_STATE_UP : IP_STATE_DOWN;
+  }
+  
+  if (_wifi)
+  {
+    return _wifi->status() == WL_CONNECTED ? IP_STATE_UP : IP_STATE_DOWN;
+  }
+
+  return IP_STATE_UNKNOWN;
+}
+
+void OXRS_LCD::_check_IP_state(int state)
+{
+  if (state != _ip_state)
+  {
+    _ip_state = state;
+
+    // refresh IP address on state change
+    IPAddress ip = _get_IP_address();
+    _show_IP(ip);
+
+    // refresh MAC on state change
+    byte mac[6];
+    _show_MAC(_get_MAC_address(mac));
+
+    // update the link LED after refreshing IP address
+    // since that clears that whole line on the screen
+    _set_ip_link_led(_ip_state);
+    
+    // if the link is up check we actually have an IP address
+    // since DHCP might not have issued an IP address yet
+    if (_ip_state == IP_STATE_UP && ip[0] == 0)
+    {
+      _ip_state = IP_STATE_DOWN;
+    }
+  }
+}
+
+void OXRS_LCD::_show_IP(IPAddress ip)
+{
+  // clear anything already displayed
+  tft.fillRect(0, 50, 240, 13, TFT_BLACK);
+
+  tft.setTextColor(TFT_WHITE);
+  tft.setTextDatum(TL_DATUM);
+  tft.setFreeFont(&Roboto_Mono_Thin_13);
+ 
+  char buffer[30];
   if (ip[0] == 0)
   {
     sprintf(buffer, "IP  : ---.---.---.---");
   }
   else
   {
-    sprintf(buffer, "IP  : %03d.%03d.%03d.%03d", ip[0],ip[1], ip[2], ip[3]);
+    sprintf(buffer, "IP  : %03d.%03d.%03d.%03d", ip[0], ip[1], ip[2], ip[3]);
   }
   tft.drawString(buffer, 12, 50);
-
-  _set_ip_link_led(link_status);
 }
 
-void OXRS_LCD::_show_MAC (byte mac[])
-{
-  char buffer[30];
-  
+void OXRS_LCD::_show_MAC(byte mac[])
+{  
+  // clear anything already displayed
+  tft.fillRect(0, 65, 240, 13, TFT_BLACK);
+
   tft.setTextColor(TFT_WHITE);
   tft.setTextDatum(TL_DATUM);
   tft.setFreeFont(&Roboto_Mono_Thin_13);
+
+  char buffer[30];
   sprintf(buffer, "MAC : %02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
   tft.drawString(buffer, 12, 65);
 }
 
+int OXRS_LCD::_get_MQTT_state(void)
+{
+  if (_get_IP_state() == IP_STATE_UP)
+  {
+    return _mqtt->connected() ? MQTT_STATE_IDLE : MQTT_STATE_DOWN;
+  }
+
+  return MQTT_STATE_UNKNOWN;
+}
+
+void OXRS_LCD::_check_MQTT_state(int state)
+{
+  if (state != _mqtt_state)
+  {
+    _mqtt_state = state;
+
+    // don't show any topic if we are in an unknown state
+    if (_mqtt_state == MQTT_STATE_UNKNOWN)
+    {
+      _show_MQTT_topic("-/------");
+    }
+    else
+    {
+      char topic[64];
+      _show_MQTT_topic(_mqtt->getWildcardTopic(topic));
+    }
+
+    // update the activity LEDs after refreshing MQTT topic
+    // since that clears that whole line on the screen
+    _set_mqtt_tx_led(_mqtt_state);
+    _set_mqtt_rx_led(_mqtt_state);
+    
+    // ensure any activity timers don't reset the LEDs
+    _last_tx_trigger = 0L;
+    _last_rx_trigger = 0L;    
+  }
+}
+
+void OXRS_LCD::_show_MQTT_topic(const char * topic)
+{
+  // clear anything already displayed
+  tft.fillRect(0, 80, 240, 13, TFT_BLACK);
+
+  tft.setTextColor(TFT_WHITE);
+  tft.setTextDatum(TL_DATUM);
+  tft.setFreeFont(&Roboto_Mono_Thin_13);
+
+  char buffer[30];
+  sprintf(buffer, "MQTT: %s", topic);
+  tft.drawString(buffer, 12, 80);
+}
 
 /**
   animation of input state in ports view
@@ -453,7 +486,7 @@ void OXRS_LCD::_show_MAC (byte mac[])
                                               |.......|.......|
                                               | 6 : 8 | 14: 16|                                             
 */
-void OXRS_LCD::_update_input_96 (uint8_t type, uint8_t index, int active)
+void OXRS_LCD::_update_input_96(uint8_t type, uint8_t index, int active)
 {  
   int bw = 19;
   int bh = 19;
@@ -507,7 +540,7 @@ void OXRS_LCD::_update_input_96 (uint8_t type, uint8_t index, int active)
                                               |.......|.......|
                                               | 6 : 8 | 14: 16|                                             
 */
-void OXRS_LCD::_update_input_128 (uint8_t type, uint8_t index, int active)
+void OXRS_LCD::_update_input_128(uint8_t type, uint8_t index, int active)
 {  
   int bw = 23;
   int bh = 19;
@@ -569,7 +602,7 @@ void OXRS_LCD::_update_input_128 (uint8_t type, uint8_t index, int active)
 
    frame : x = 0; y = 134 ; w = 240; h = 4*21+2 = 86
  */
-void OXRS_LCD::_update_output_128 (uint8_t type, uint8_t index, int active)
+void OXRS_LCD::_update_output_128(uint8_t type, uint8_t index, int active)
 {  
   int bw = 8;
   int bh = 19;
@@ -627,7 +660,7 @@ void OXRS_LCD::_update_output_128 (uint8_t type, uint8_t index, int active)
   i -= 16
   index = (i / 2) * 3 + i % 2
 */
-void OXRS_LCD::_update_io_48 (uint8_t type, uint8_t index, int active)
+void OXRS_LCD::_update_io_48(uint8_t type, uint8_t index, int active)
 {  
 
   int bw = 27;
@@ -684,45 +717,41 @@ void OXRS_LCD::_update_io_48 (uint8_t type, uint8_t index, int active)
   }     
 }
 
-
 /*
- * animated "leds"
- */
-void OXRS_LCD::_set_mqtt_rx_led(int state)
-{
-  uint16_t color[3] = {TFT_DARKGREY, TFT_YELLOW, TFT_RED};
-  
-  if (state < 3) tft.fillRoundRect(2, 80, 8, 5, 2,  color[state]);
-}
-
-void OXRS_LCD::_set_mqtt_tx_led(int state)
-{
-   uint16_t color[3] = {TFT_DARKGREY, TFT_ORANGE, TFT_RED};
-
-  if (state < 3) tft.fillRoundRect(2, 88, 8, 5, 2,  color[state]);
-}
-
-void OXRS_LCD::_set_ip_link_led(int active)
-{
-  uint16_t color;
- 
-  color = active ? TFT_GREEN : TFT_RED;
-  tft.fillRoundRect(2, 54, 8, 5, 2,  color);
-}
-
-/*
- * set backlight of LCD val in % [0..100]
+ * set backlight of LCD (val in % [0..100])
  */
 void OXRS_LCD::_set_backlight(int val)
 {
   ledcWrite(BL_PWM_CHANNEL, 255*val/100); 
 }
 
+/*
+ * animated "leds"
+ */
+void OXRS_LCD::_set_ip_link_led(int state)
+{
+  // UP, DOWN, UNKNOWN
+  uint16_t color[3] = {TFT_GREEN, TFT_RED, TFT_BLACK};
+  if (state < 3) tft.fillRoundRect(2, 54, 8, 5, 2, color[state]);
+}
 
+void OXRS_LCD::_set_mqtt_rx_led(int state)
+{
+  // IDLE, ACTIVE, DOWN, UNKNOWN
+  uint16_t color[4] = {TFT_DARKGREY, TFT_YELLOW, TFT_RED, TFT_BLACK};  
+  if (state < 4) tft.fillRoundRect(2, 80, 8, 5, 2, color[state]);
+}
 
+void OXRS_LCD::_set_mqtt_tx_led(int state)
+{
+  // IDLE, ACTIVE, DOWN, UNKNOWN
+  uint16_t color[4] = {TFT_DARKGREY, TFT_ORANGE, TFT_RED, TFT_BLACK};
+  if (state < 4) tft.fillRoundRect(2, 88, 8, 5, 2, color[state]);
+}
 
-// Bodmers BMP image rendering function
-
+/*
+ * Bodmers BMP image rendering function
+ */
 bool OXRS_LCD::_drawBmp(const char *filename, int16_t x, int16_t y, int16_t bmp_w, int16_t bmp_h) 
 {
   uint32_t  seekOffset;
