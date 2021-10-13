@@ -2,9 +2,10 @@
 #include "OXRS_LCD.h"
 
 #include <TFT_eSPI.h>               // Hardware-specific library
-#include "bitmaps.h"                // images bitmaps
+#include "OXRS_logo.h"              // default logo bitmap (24-bit-bitmap)
 #include "Free_Fonts.h"             // Include the header file attached to this sketch
 #include "roboto_fonts.h"
+#include <pgmspace.h>
 
 TFT_eSPI tft = TFT_eSPI();          // Invoke library
 
@@ -28,22 +29,29 @@ OXRS_LCD::OXRS_LCD(WiFiClass& wifi, OXRS_MQTT& mqtt)
   memset(_io_values, 0, sizeof(_io_values));
 }
 
-void OXRS_LCD::draw_header(const char * fwShortName, const char * fwMaker, const char * fwVersion, const char * fwPlatform)
+void OXRS_LCD::draw_header(const char * fwShortName, const char * fwMaker, const char * fwVersion, const char * fwPlatform, const uint8_t * fwLogo)
 {
   char buffer[30];
 
-  // default logo is OXRS
-  int logo_w = oxrs40Width;
-  int logo_h = oxrs40Height;
-  const unsigned char * logo_bm = oxrs40;
-  uint16_t logo_fg = tft.color565(167, 239, 225);
-  uint16_t logo_bg = tft.color565(45, 74, 146);
+  int logo_w = 40;
+  int logo_h = 40;
+  int logo_x = 0;
+  int logo_y = 0;
 
-  // try to draw maker supplied logo.bmp from SPIFFS
-  // if no valid file found, draw default OXRS logo stored in PROGMEM
-  if (!_drawBmp("/logo.bmp", 0, 0, logo_w, logo_h))
+  // 1. try to draw maker supplied /logo.bmp from SPIFFS
+  // 2, if not successful try to draw maker supplied logo via fwLogo (fwLogo from PROGMEM)
+  // 3. if not successful draw embedded OXRS logo from PROGMEM
+  Serial.println(F("[lcd ] trying logo from SPIFFS"));  
+  if (!_drawBmp("/logo.bmp", logo_x, logo_y, logo_w, logo_h))
   {
-    tft.drawBitmap(0, 0, logo_bm, logo_w, logo_h, logo_fg, logo_bg);
+    Serial.println(F("[lcd ] loading logo from SPIFFS failed"));  
+    Serial.println(F("[lcd ] trying fwlogo from PROGMEM"));  
+    if (!fwLogo || !_drawBmp_P(fwLogo, logo_x, logo_y, logo_w, logo_h))
+    {
+      Serial.println(F("[lcd ] loading fwlogo from PROGMEM failed"));  
+      Serial.println(F("[lcd ] loading default OXRS_logo from PROGMEM"));  
+      _drawBmp_P(OXRS_logo, logo_x, logo_y, logo_w, logo_h);
+    }
   }
 
   tft.fillRect(42, 0, 240, 40,  TFT_WHITE);
@@ -752,12 +760,12 @@ void OXRS_LCD::_set_mqtt_tx_led(int state)
 /*
  * Bodmers BMP image rendering function
  */
+// render logo from file in SPIFFS
 bool OXRS_LCD::_drawBmp(const char *filename, int16_t x, int16_t y, int16_t bmp_w, int16_t bmp_h) 
 {
   uint32_t  seekOffset;
   uint16_t  w, h, row, col;
   uint8_t   r, g, b;
-  bool      drawn = true;
 
   Serial.print(F("[lcd ] reading "));  
   Serial.print(filename);
@@ -839,7 +847,7 @@ bool OXRS_LCD::_drawBmp(const char *filename, int16_t x, int16_t y, int16_t bmp_
   return false;
 }
 
-// These read 16- and 32-bit types from the SD card file.
+// These read 16- and 32-bit types from the SPIFFS file
 // BMP data is stored little-endian, Arduino is little-endian too.
 // May need to reverse subscript order if porting elsewhere.
 
@@ -858,5 +866,96 @@ uint32_t OXRS_LCD::_read32(File &f)
   ((uint8_t *)&result)[1] = f.read();
   ((uint8_t *)&result)[2] = f.read();
   ((uint8_t *)&result)[3] = f.read(); // MSB
+  return result;
+}
+
+// render logo from array in PROGMEM
+bool OXRS_LCD::_drawBmp_P(const uint8_t *image, int16_t x, int16_t y, int16_t bmp_w, int16_t bmp_h) 
+{
+  uint32_t  seekOffset;
+  uint16_t  w, h, row, col;
+  uint8_t   r, g, b;
+  uint8_t*  ptr;
+
+  Serial.println(F("[lcd ] loading logo from PROGMEM"));  
+
+  ptr = (uint8_t*)image;
+
+  if (_read16_P(&ptr) == 0x4D42)
+  {
+    _read32_P(&ptr);
+    _read32_P(&ptr);
+    seekOffset = _read32_P(&ptr);
+    _read32_P(&ptr);
+    w = _read32_P(&ptr);
+    h = _read32_P(&ptr);
+    if ((w != bmp_w) || (h != bmp_h))
+    {
+      Serial.print(F("[lcd ] warning! bmp not "));
+      Serial.print(bmp_w);
+      Serial.print(F("x"));
+      Serial.println(bmp_h);
+    }
+
+    if ((_read16_P(&ptr) == 1) && (_read16_P(&ptr) == 24) && (_read32_P(&ptr) == 0))
+    {
+      // crop to bmp_h
+      y += bmp_h - 1;
+
+      bool oldSwapBytes = tft.getSwapBytes();
+      tft.setSwapBytes(true);
+      ptr = (uint8_t*)image + seekOffset;
+
+      uint16_t padding = (4 - ((w * 3) & 3)) & 3;
+      uint8_t lineBuffer[w * 3 + padding];
+
+      for (row = 0; row < h; row++)
+      {
+        memcpy_P(lineBuffer, ptr, sizeof(lineBuffer));
+        ptr += sizeof(lineBuffer);
+        uint8_t*  bptr = lineBuffer;
+        uint16_t* tptr = (uint16_t*)lineBuffer;
+        // Convert 24 to 16 bit colours
+        for (uint16_t col = 0; col < w; col++)
+        {
+          b = *bptr++;
+          g = *bptr++;
+          r = *bptr++;
+          *tptr++ = ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
+        }
+
+        // Push the pixel row to screen, pushImage will crop the line if needed
+        // y is decremented as the BMP image is drawn bottom up
+        // crop to bmp_w
+        tft.pushImage(x, y--, bmp_w, 1, (uint16_t*)lineBuffer);
+      }
+      tft.setSwapBytes(oldSwapBytes);
+      Serial.println(F("[lcd ] logo loaded ok"));
+      return true;
+    }
+  }
+  Serial.println(F("[lcd ] bmp format not recognized"));
+  return false;
+}
+
+// These read 16- and 32-bit types from PROGMEM.
+// BMP data is stored little-endian, Arduino is little-endian too.
+// May need to reverse subscript order if porting elsewhere.
+
+uint16_t OXRS_LCD::_read16_P(uint8_t** p) 
+{
+  uint16_t result;
+   
+  memcpy_P((uint8_t *)&result, *p, 2);
+  *p += 2;
+  return result;
+}
+
+uint32_t OXRS_LCD::_read32_P(uint8_t** p) 
+{
+  uint32_t result;
+  
+  memcpy_P((uint8_t *)&result, *p, 4);
+  *p += 4;
   return result;
 }
