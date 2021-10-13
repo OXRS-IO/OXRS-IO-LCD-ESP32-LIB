@@ -52,6 +52,6 @@ Any other method to convert the .bmp to an array can be used. Make sure the arra
 At startup the LCD lib searches for a logo in the following order and stops after the first logo found
 1. check if there is a valid `/logo.bmp` stored in SPIFFS
 1. if 1. is not successful check if there is a `fwLogo reference` passed to the LCDlib by the `OXRS_lcd::draw_header()` member.
-1. if 2. is not successful load the default `embedded OXRD_logo` from PROGMEM
+1. if 2. is not successful load the default `embedded OXRS_logo` from PROGMEM
  
   
