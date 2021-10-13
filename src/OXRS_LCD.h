@@ -51,7 +51,12 @@ class OXRS_LCD
     OXRS_LCD(EthernetClass& ethernet, OXRS_MQTT& mqtt);
     OXRS_LCD(WiFiClass& wifi, OXRS_MQTT& mqtt);
     
-    void draw_header(const char * fwShortName, const char * fwMaker, const char * fwVersion, const char * fwPlatform);
+    void draw_header(
+      const char * fwShortName, 
+      const char * fwMaker, 
+      const char * fwVersion, 
+      const char * fwPlatform, 
+      const uint8_t * fwLogo = NULL);
     void draw_ports (int port_layout, uint8_t mcps_found);
 
     void begin (uint32_t ontime_event=LCD_EVENT_MS, uint32_t ontime_display=LCD_ON_MS);
@@ -116,6 +121,11 @@ class OXRS_LCD
     bool _drawBmp(const char *filename, int16_t x, int16_t y, int16_t bmp_w, int16_t bmp_h);
     uint16_t _read16(File &f);
     uint32_t _read32(File &f);   
+
+    bool _drawBmp_P(const uint8_t *image, int16_t x, int16_t y, int16_t bmp_w, int16_t bmp_h);
+    uint16_t _read16_P(uint8_t** p);
+    uint32_t _read32_P(uint8_t** p);   
+
 };
 
 
