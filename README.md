@@ -42,8 +42,8 @@ Following steps are required:
 *
   * Convert the logo.bmp to a C header file.
 You can use the convert.py script supplied in the tools folder of the lib. 
-Type `convert.py -i logo.bmp -o logo.h -v logo` to create the `logo.h` header file that contains the `logo.bmp` as an array stored in PROGMEM.
-Any other method to convert the .bmp to an array can be used. Make sure the array is declared as `const uint8_t logo[] PROGMEM = { ... };`
+Type `convert.py -i logo.bmp -o logo.h -v FW_LOGO` to create the `logo.h` header file that contains the `logo.bmp` as an array stored in PROGMEM.
+Any other method to convert the .bmp to an array can be used. Make sure the array is declared as `const uint8_t FW_LOGO[] PROGMEM = { ... };`
   * the `logo.h` file has to be copied into the sketch folder
   * `logo.h` has to be included in your FW.ino file `#include "logo.h"`
 
