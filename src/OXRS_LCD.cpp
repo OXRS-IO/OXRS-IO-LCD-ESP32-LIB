@@ -1,3 +1,8 @@
+/*
+ * OXRS_LCD.cpp
+ * 
+ */
+ 
 #include "Arduino.h"
 #include "OXRS_LCD.h"
 
@@ -73,65 +78,152 @@ void OXRS_LCD::draw_header(const char * fwShortName, const char * fwMaker, const
 }
 
 /*
- * draw ports with inactive inputs on screen 
- */
+ * draw ports according to PORT_LAYOUT_... on screen 
+ * show i/o's as inactive
+*/
 void OXRS_LCD::draw_ports(int port_layout, uint8_t mcps_found)
 { 
   _port_layout = port_layout;
-  
-  if (_port_layout == PORT_LAYOUT_INPUT_96)
+ 
+  // handle input configurations
+  if ((_port_layout / 1000) == 1)
   {
-    for (int index = 1; index <= 96; index += 16)
+    // autodetect layout from mcps_found
+    if (_port_layout == PORT_LAYOUT_INPUT_AUTO)
     {
-      int active = (bitRead(mcps_found, 0)) ? 1 : 0;
+      _port_layout = PORT_LAYOUT_INPUT_128;
+      if (mcps_found < 0x40) {_port_layout = PORT_LAYOUT_INPUT_96;}
+      if (mcps_found < 0x10) {_port_layout = PORT_LAYOUT_INPUT_64;}
+      if (mcps_found < 0x04) {_port_layout = PORT_LAYOUT_INPUT_32;}
+    }
+    // configure outline
+    switch (_port_layout) {
+      case PORT_LAYOUT_INPUT_32:
+        _layout_config.x = 0;
+        _layout_config.y = 151;
+        _layout_config.xo = 25+47;
+        _layout_config.bw = 23;
+        _layout_config.bh = 19;
+        _layout_config.index_max = 32;
+        break;
+      case PORT_LAYOUT_INPUT_64:
+        _layout_config.x = 0;
+        _layout_config.y = 151;
+        _layout_config.xo = 25; 
+        _layout_config.bw = 23;
+        _layout_config.bh = 19;
+        _layout_config.index_max = 64;
+        break;
+      case PORT_LAYOUT_INPUT_96:
+        _layout_config.x = 0;
+        _layout_config.y = 151;
+        _layout_config.xo = 2; 
+        _layout_config.bw = 19;
+        _layout_config.bh = 19;
+        _layout_config.index_max = 96;
+        break;
+      case PORT_LAYOUT_INPUT_128:
+        _layout_config.x = 0;
+        _layout_config.y = 130;
+        _layout_config.xo = 25; 
+        _layout_config.bw = 23;
+        _layout_config.bh = 19;
+        _layout_config.index_max = 128;
+        break;
+    }
+    // draw outline as configured
+    for (int index = 1; index <= _layout_config.index_max; index += 16)
+    {
+      int state = (bitRead(mcps_found, 0)) ? PORT_STATE_OFF : PORT_STATE_NA;
       for (int i = 0; i < 16; i++)
       {
         if ((i % 4) == 0)
         {
-          _update_input_96(TYPE_FRAME, index+i, active);
+          _update_input(TYPE_FRAME, index+i, state);
         }
-        _update_input_96(TYPE_STATE, index+i, 0);
+        _update_input(TYPE_STATE, index+i, state);
       }
       mcps_found >>= 1;
-    }  
-  }
-
-  if (_port_layout == PORT_LAYOUT_INPUT_128)
+    } 
+  }   
+  
+  // handle output configurations
+  int frame_h;
+  if ((_port_layout / 1000) == 2)
   {
-    for (int index = 1; index <= 128; index += 16)
+    // autodetect layout from mcps_found
+    if (_port_layout == PORT_LAYOUT_OUTPUT_AUTO)
     {
-      int active = (bitRead(mcps_found, 0)) ? 1 : 0;
+      _port_layout = PORT_LAYOUT_OUTPUT_128;
+      if (mcps_found < 0x40) {_port_layout = PORT_LAYOUT_OUTPUT_96;}
+      if (mcps_found < 0x10) {_port_layout = PORT_LAYOUT_OUTPUT_64;}
+      if (mcps_found < 0x04) {_port_layout = PORT_LAYOUT_OUTPUT_32;}
+    }
+    // configure outline
+    switch (_port_layout) {
+      case PORT_LAYOUT_OUTPUT_32:
+        _layout_config.x = 0;
+        _layout_config.y = 159;
+        _layout_config.xo = 4;
+        _layout_config.bw = 8;
+        _layout_config.bh = 19;
+        _layout_config.index_max = 32;
+        frame_h = _layout_config.bh + 4;
+        break;
+      case PORT_LAYOUT_OUTPUT_64:
+        _layout_config.x = 0;
+        _layout_config.y = 148;
+        _layout_config.xo = 4;
+        _layout_config.bw = 8;
+        _layout_config.bh = 19;
+        _layout_config.index_max = 64;
+        frame_h = _layout_config.bh * 2 + 6;
+        break;
+      case PORT_LAYOUT_OUTPUT_96:
+        _layout_config.x = 0;
+        _layout_config.y = 138;
+        _layout_config.xo = 4;
+        _layout_config.bw = 8;
+        _layout_config.bh = 19;
+        _layout_config.index_max = 96;
+        frame_h = _layout_config.bh * 3 + 8;
+        break;
+      case PORT_LAYOUT_OUTPUT_128:
+        _layout_config.x = 0;
+        _layout_config.y = 127;
+        _layout_config.xo = 4;
+        _layout_config.bw = 8;
+        _layout_config.bh = 19;
+        _layout_config.index_max = 128;
+        frame_h = _layout_config.bh * 4 + 10;
+        break;
+    }
+    // draw outline as configured   
+    tft.fillRect(0, _layout_config.y-2, 240, frame_h,  TFT_WHITE);
+    for (int index = 1; index <= _layout_config.index_max; index += 16)
+    {
+      int state = (bitRead(mcps_found, 0)) ? PORT_STATE_OFF : PORT_STATE_NA;
       for (int i = 0; i < 16; i++)
       {
-        if ((i % 4) == 0)
-        {
-          _update_input_128(TYPE_FRAME, index+i, active);
-        }
-        _update_input_128(TYPE_STATE, index+i, 0);
+        _update_output(TYPE_FRAME, index+i, state);
+        _update_output(TYPE_STATE, index+i, state);
       }
       mcps_found >>= 1;
     }  
   }
   
-  if (_port_layout == PORT_LAYOUT_OUTPUT_128)
-  {    
-    tft.fillRect(0, 134, 240, 87,  TFT_WHITE);
-
-    for (int index = 1; index <= 128; index += 16)
-    {
-      int active = (bitRead(mcps_found, 0)) ? 1 : 0;
-      for (int i = 0; i < 16; i++)
-      {
-        _update_output_128(TYPE_FRAME, index+i, active);
-        _update_output_128(TYPE_STATE, index+i, active ? 0 : -1);
-      }
-      mcps_found >>= 1;
-    }  
-  }
-  
+  // handle input/output configuration (smoke detector)
   if (_port_layout == PORT_LAYOUT_IO_48)
   {    
-    for (int index = 1; index <= 48; index += 16)
+    // configure outline
+    _layout_config.x = 0;
+    _layout_config.y = 137;
+    _layout_config.xo = 10;
+    _layout_config.bw = 27;
+    _layout_config.bh = 33;
+    _layout_config.index_max = 48;
+    // draw outline as configured   
+    for (int index = 1; index <= _layout_config.index_max; index += 16)
     {
       for (int i = 0; i < 16; i++)
       {
@@ -144,6 +236,9 @@ void OXRS_LCD::draw_ports(int port_layout, uint8_t mcps_found)
       mcps_found >>= 1;
     }  
   }
+
+  // fill bottom field with grey (event display space)
+  _clear_event();
 }
 
 void OXRS_LCD::begin(uint32_t ontime_event, uint32_t ontime_display)
@@ -191,28 +286,35 @@ void OXRS_LCD::process(int mcp, uint16_t io_value)
       {
         _set_backlight(LCD_BL_ON);
         _last_lcd_trigger = millis();
-        
         switch (_port_layout) {
+          // input ports
+          case PORT_LAYOUT_INPUT_32:
+          case PORT_LAYOUT_INPUT_64:
           case PORT_LAYOUT_INPUT_96:
-            _update_input_96(TYPE_STATE, index+i+1, !bitRead(io_value, i)); break;
           case PORT_LAYOUT_INPUT_128:
-            _update_input_128(TYPE_STATE, index+i+1, !bitRead(io_value, i)); break;
+            _update_input(TYPE_STATE, index+i+1, bitRead(io_value, i) ? PORT_STATE_OFF: PORT_STATE_ON); 
+            break;
+          // outport ports
+          case PORT_LAYOUT_OUTPUT_32:
+          case PORT_LAYOUT_OUTPUT_64:
+          case PORT_LAYOUT_OUTPUT_96:
           case PORT_LAYOUT_OUTPUT_128:
-            _update_output_128(TYPE_STATE, index+i+1, bitRead(io_value, i)); break;
+            _update_output(TYPE_STATE, index+i+1, bitRead(io_value, i) ? PORT_STATE_ON: PORT_STATE_OFF); 
+            break;
+          // input and output ports mixed
           case PORT_LAYOUT_IO_48:
             if (index < 16)
             {
-              _update_io_48(TYPE_STATE, index+i+1, !bitRead(io_value, i));
+              _update_io_48(TYPE_STATE, index+i+1, bitRead(io_value, i) ? PORT_STATE_OFF: PORT_STATE_ON);
             } 
             else
             {
-              _update_io_48(TYPE_STATE, index+i+1, bitRead(io_value, i));
+              _update_io_48(TYPE_STATE, index+i+1, bitRead(io_value, i) ? PORT_STATE_ON: PORT_STATE_OFF);
             }
             break;
         }
-     }
-    }
-    
+      }
+    }  
     // Need to store so we can detect changes for port animation
     _io_values[mcp] = io_value;
   }
@@ -316,7 +418,7 @@ void OXRS_LCD::show_event(const char * s_event)
 
 void OXRS_LCD::_clear_event()
 {
-  tft.fillRect(0, 225, 240, 240,  TFT_BLACK);
+  tft.fillRect(0, 225, 240, 240,  TFT_DARKGREY);
 }
 
 byte * OXRS_LCD::_get_MAC_address(byte * mac)
@@ -333,7 +435,7 @@ byte * OXRS_LCD::_get_MAC_address(byte * mac)
     return mac;
   }
   
-  memset(mac, 0, sizeof(mac));
+  memset(mac, 6, sizeof(mac));
   return mac;
 }
 
@@ -484,59 +586,6 @@ void OXRS_LCD::_show_MQTT_topic(const char * topic)
   tft.drawString(buffer, 12, 80);
 }
 
-/**
-  animation of input state in ports view
-  Ports:    | 1 | 3 | 5 | 7 |     Index:      | 1 : 3 | 9 : 11|
-            +---+---+---+---+....             |.......|.......|
-            | 2 | 4 | 6 | 8 |                 | 2 : 4 | 10: 12|
-                                              +-------+-------+......
-                                              | 5 : 7 | 13: 15|
-                                              |.......|.......|
-                                              | 6 : 8 | 14: 16|                                             
-*/
-void OXRS_LCD::_update_input_96(uint8_t type, uint8_t index, int active)
-{  
-  int bw = 19;
-  int bh = 19;
-  int xo = 2;
-  int x = 0;
-  int y = 180;
-  int port;
-  uint16_t color;
-
-  index -= 1;
-  port = index / 4;
-  y = y + (port % 2) * bh;
-  xo = xo + (port / 8) * 3;
-  x = xo + (port / 2) * bw;
-
-  if (type == TYPE_FRAME)
-  // draw port frame
-  {
-    color = active ? TFT_WHITE : TFT_DARKGREY;
-    tft.drawRect(x, y, bw, bh, color);
-    tft.fillRect(x+1, y+1, bw-2, bh-2, TFT_BLACK);
-  }
-  else
-  // draw virtual led in port
-  {
-    color = active ? TFT_YELLOW : TFT_DARKGREY;
-    switch (index % 4){
-      case 0:
-        tft.fillRoundRect(x+2     , y+2      , bw/2-2, bh/2-2, 2, color);
-        break;
-      case 1:
-        tft.fillRoundRect(x+2     , y+bh/2+1 , bw/2-2, bh/2-2, 2, color);
-        break;
-      case 2:
-        tft.fillRoundRect(x+1+bw/2, y+2      , bw/2-2, bh/2-2, 2, color);
-        break;
-      case 3:
-        tft.fillRoundRect(x+1+bw/2, y+bh/2+1 , bw/2-2, bh/2-2, 2, color);
-        break;
-    }
-  }     
-}
 
 /**
   animation of input state in ports view
@@ -548,34 +597,45 @@ void OXRS_LCD::_update_input_96(uint8_t type, uint8_t index, int active)
                                               |.......|.......|
                                               | 6 : 8 | 14: 16|                                             
 */
-void OXRS_LCD::_update_input_128(uint8_t type, uint8_t index, int active)
-{  
-  int bw = 23;
-  int bh = 19;
-  int xo = 25;
-  int x = 0;
-  int y = 136;
+void OXRS_LCD::_update_input(uint8_t type, uint8_t index, int state)
+{
+  // OFF, ON, NA
+  uint16_t color_map[3] = {tft.color565(130,130,130), TFT_YELLOW, tft.color565(60,60,60)};
+  int bw =  _layout_config.bw;
+  int bh =  _layout_config.bh;
+  int xo =  _layout_config.xo;
+  int x =   _layout_config.x;
+  int y =   _layout_config.y;
   int port;
   uint16_t color;
 
+  if (index > _layout_config.index_max) return;
+  
   index -= 1;
   port = index / 4;
   y = y + (port % 2) * bh;
-  if (port > 15) {y = y + 2 * bh + 3;}
-  xo = xo + ((port % 16) / 8) * 3;
-  x = xo + ((port % 16) / 2) * bw;
-
+  if (_port_layout == PORT_LAYOUT_INPUT_96)
+  {
+    xo = xo + (port / 8) * 3;
+    x = xo + (port / 2) * bw;
+  }
+  else
+  {
+    if (port > 15) {y = y + 2 * bh + 3;}
+    xo = xo + ((port % 16) / 8) * 3;
+    x = xo + ((port % 16) / 2) * bw;
+  }
   if (type == TYPE_FRAME)
   // draw port frame
   {
-    color = active ? TFT_WHITE : TFT_DARKGREY;
+    color = (state != PORT_STATE_NA) ? TFT_WHITE : TFT_DARKGREY;
     tft.drawRect(x, y, bw, bh, color);
     tft.fillRect(x+1, y+1, bw-2, bh-2, TFT_BLACK);
   }
   else
   // draw virtual led in port
   {
-    color = active ? TFT_YELLOW : TFT_DARKGREY;
+    color = color_map[state];
     switch (index % 4){
       case 0:
         tft.fillRoundRect(x+2     , y+2      , bw/2-2, bh/2-2, 2, color);
@@ -610,15 +670,17 @@ void OXRS_LCD::_update_input_128(uint8_t type, uint8_t index, int active)
 
    frame : x = 0; y = 134 ; w = 240; h = 4*21+2 = 86
  */
-void OXRS_LCD::_update_output_128(uint8_t type, uint8_t index, int active)
+void OXRS_LCD::_update_output(uint8_t type, uint8_t index, int state)
 {  
-  int bw = 8;
-  int bh = 19;
-  int xo = 4;
-  int x = 0;
-  int y = 136;
+  int bw =  _layout_config.bw;
+  int bh =  _layout_config.bh;
+  int xo =  _layout_config.xo;
+  int x =   _layout_config.x;
+  int y =   _layout_config.y;
   uint16_t color;
   int index_mod;
+
+  if (index > _layout_config.index_max) return;
 
   index -= 1;
   index_mod = index % 32;
@@ -630,21 +692,21 @@ void OXRS_LCD::_update_output_128(uint8_t type, uint8_t index, int active)
   if (type == TYPE_FRAME)
   // draw port frame
   {
-    color = active ? TFT_WHITE : TFT_DARKGREY;
+    color = (state != PORT_STATE_NA) ? TFT_WHITE : TFT_DARKGREY;
     tft.drawRect(x, y, bw, bh, color);
   }
   else
   // draw virtual led in port
   {
     tft.fillRect(x+1, y+1, bw-2, bh-2, TFT_BLACK);
-    switch (active) {
-      case -1:
+    switch (state) {
+      case PORT_STATE_NA:
         tft.drawRect(x+2, y+bh/2+2, bw-4, bh/2-4,  TFT_DARKGREY);
         break;
-      case 0:
+      case PORT_STATE_OFF:
         tft.fillRect(x+2, y+bh/2+2, bw-4, bh/2-4,  TFT_LIGHTGREY);
         break;
-      case 1:
+      case PORT_STATE_ON:
         tft.fillRect(x+1, y+1,      bw-2, bh-2,  TFT_RED);
         break;
     }
@@ -652,7 +714,7 @@ void OXRS_LCD::_update_output_128(uint8_t type, uint8_t index, int active)
 }
 
 /**
-  animation of input and outputstate in ports view
+  animation of input and output state in ports view
   Ports:    | 1 | 3 | 5 | 7 |     Index:      | 1 : 2 | 7 : 8 |    function:  | O : O |
             +---+---+---+---+....             |.......|.......|               |.......|
             | 2 | 4 | 6 | 8 |                 | 3 :   | 9 :   |               | I :   |
@@ -668,15 +730,14 @@ void OXRS_LCD::_update_output_128(uint8_t type, uint8_t index, int active)
   i -= 16
   index = (i / 2) * 3 + i % 2
 */
-void OXRS_LCD::_update_io_48(uint8_t type, uint8_t index, int active)
+void OXRS_LCD::_update_io_48(uint8_t type, uint8_t index, int state)
 {  
-
-  int bw = 27;
-  int bh = 33;
+  int bw =  _layout_config.bw;
+  int bh =  _layout_config.bh;
+  int xo =  _layout_config.xo;
+  int x =   _layout_config.x;
+  int y =   _layout_config.y;
   int bht = bh-bw/2;
-  int xo = 10;
-  int x = 0;
-  int y = 150;
   int port;
   int i;
   uint16_t color;
@@ -700,7 +761,7 @@ void OXRS_LCD::_update_io_48(uint8_t type, uint8_t index, int active)
   if (type == TYPE_FRAME)
   // draw port fame
   {
-    color = active ? TFT_WHITE : TFT_DARKGREY;
+    color = (state != PORT_STATE_NA) ? TFT_WHITE : TFT_DARKGREY;
     tft.drawRect(x, y, bw, bh, color);
     tft.drawRect(x, y, bw/2+1, bht, color);
     tft.drawRect(x+bw/2, y, bw/2+1, bht, color);
@@ -710,15 +771,15 @@ void OXRS_LCD::_update_io_48(uint8_t type, uint8_t index, int active)
   {
     switch (index % 3){
       case 0:
-        color = active ? TFT_RED : TFT_DARKGREY; 
+        color = (state == PORT_STATE_ON) ? TFT_RED : TFT_DARKGREY; 
         tft.fillRect(x+1     , y+1      , bw/2-1, bht-2, color);
         break;
       case 1:
-        color = active ? TFT_RED : TFT_DARKGREY; 
+        color = (state == PORT_STATE_ON) ? TFT_RED : TFT_DARKGREY; 
         tft.fillRect(x+1+bw/2, y+1      , bw/2-1, bht-2, color);
         break;
       case 2:
-        color = active ? TFT_YELLOW : TFT_DARKGREY;
+        color = (state == PORT_STATE_ON) ? TFT_YELLOW : TFT_DARKGREY;
         tft.fillRoundRect(x+2     , y+bht+1 , bw/2-3, bh-bht-3, 3, color);
         break;
     }

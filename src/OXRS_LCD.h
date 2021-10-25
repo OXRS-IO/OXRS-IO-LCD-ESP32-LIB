@@ -1,3 +1,8 @@
+/*
+ * OXRS_LCD.h
+ * 
+ */
+
 #ifndef OXRS_LCD_H
 #define OXRS_LCD_H
 
@@ -16,8 +21,16 @@
 #define     TYPE_FRAME              0
 #define     TYPE_STATE              1
 
+// port layout configurations
+#define     PORT_LAYOUT_INPUT_AUTO  1000
+#define     PORT_LAYOUT_INPUT_32    1032
+#define     PORT_LAYOUT_INPUT_64    1064
 #define     PORT_LAYOUT_INPUT_96    1096
 #define     PORT_LAYOUT_INPUT_128   1128
+#define     PORT_LAYOUT_OUTPUT_AUTO 2000
+#define     PORT_LAYOUT_OUTPUT_32   2032
+#define     PORT_LAYOUT_OUTPUT_64   2064
+#define     PORT_LAYOUT_OUTPUT_96   2096
 #define     PORT_LAYOUT_OUTPUT_128  2128
 #define     PORT_LAYOUT_IO_48       3048
 
@@ -45,6 +58,21 @@
 #define     MQTT_STATE_DOWN         2
 #define     MQTT_STATE_UNKNOWN      3
 
+// Port states
+#define     PORT_STATE_OFF          0
+#define     PORT_STATE_ON           1
+#define     PORT_STATE_NA           2
+
+typedef struct LAYOUT_CONFIG 
+  {
+    int x;
+    int y;
+    int xo;
+    int bw;
+    int bh;
+    int index_max;
+  } layout_config;
+  
 class OXRS_LCD
 {
   public:
@@ -89,7 +117,8 @@ class OXRS_LCD
     int             _mqtt_state = -1;
     
     // defines how i/o ports are displayed and animated
-    int _port_layout;
+    int             _port_layout;
+    layout_config   _layout_config;
      
    // history buffer of io_values to extract changes
     uint16_t _io_values[8];
@@ -108,10 +137,9 @@ class OXRS_LCD
     void _check_MQTT_state(int state);
     void _show_MQTT_topic(const char * topic);
 
-    void _update_input_96(uint8_t type, uint8_t index, int active);
-    void _update_input_128(uint8_t type, uint8_t index, int active);
-    void _update_output_128(uint8_t type, uint8_t index, int active);
-    void _update_io_48(uint8_t type, uint8_t index, int active);
+    void _update_input(uint8_t type, uint8_t index, int state);
+    void _update_output(uint8_t type, uint8_t index, int state);
+    void _update_io_48(uint8_t type, uint8_t index, int state);
 
     void _set_backlight(int val);
     void _set_ip_link_led(int state);
