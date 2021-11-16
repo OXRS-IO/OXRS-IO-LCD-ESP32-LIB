@@ -46,15 +46,10 @@ void OXRS_LCD::draw_header(const char * fwShortName, const char * fwMaker, const
   // 1. try to draw maker supplied /logo.bmp from SPIFFS
   // 2, if not successful try to draw maker supplied logo via fwLogo (fwLogo from PROGMEM)
   // 3. if not successful draw embedded OXRS logo from PROGMEM
-  Serial.println(F("[lcd ] trying logo from SPIFFS"));  
   if (!_drawBmp("/logo.bmp", logo_x, logo_y, logo_w, logo_h))
   {
-    Serial.println(F("[lcd ] loading logo from SPIFFS failed"));  
-    Serial.println(F("[lcd ] trying fwlogo from PROGMEM"));  
     if (!fwLogo || !_drawBmp_P(fwLogo, logo_x, logo_y, logo_w, logo_h))
     {
-      Serial.println(F("[lcd ] loading fwlogo from PROGMEM failed"));  
-      Serial.println(F("[lcd ] loading default OXRS_logo from PROGMEM"));  
       _drawBmp_P(OXRS_logo, logo_x, logo_y, logo_w, logo_h);
     }
   }
@@ -256,13 +251,7 @@ void OXRS_LCD::begin(uint32_t ontime_event, uint32_t ontime_display)
   _ontime_display = ontime_display;
   _ontime_event = ontime_event;
 
-  Serial.print(F("[lcd ] mounting SPIFFS..."));
-  if (!SPIFFS.begin())
-  { 
-    Serial.println(F("failed, might need formatting?"));
-    return; 
-  }
-  Serial.println(F("done"));
+  SPIFFS.begin();
 }
 
 /*
@@ -828,25 +817,13 @@ bool OXRS_LCD::_drawBmp(const char *filename, int16_t x, int16_t y, int16_t bmp_
   uint16_t  w, h, row, col;
   uint8_t   r, g, b;
 
-  Serial.print(F("[lcd ] reading "));  
-  Serial.print(filename);
-  Serial.print(F("..."));
-
   File file = SPIFFS.open(filename, "r");
-  if (!file) 
-  {
-    Serial.println(F("failed to open file"));
-    return false;
-  }
-  
-  if (file.size() == 0)
-  {
-    Serial.println(F("not found"));
-    return false;
-  }
 
-  Serial.print(file.size());
-  Serial.println(F(" bytes read"));
+  if (!file) 
+    return false;  
+
+  if (file.size() == 0) 
+    return false;
 
   if (_read16(file) == 0x4D42)
   {
@@ -856,13 +833,6 @@ bool OXRS_LCD::_drawBmp(const char *filename, int16_t x, int16_t y, int16_t bmp_
     _read32(file);
     w = _read32(file);
     h = _read32(file);
-    if ((w != bmp_w) || (h != bmp_h))
-    {
-      Serial.print(F("[lcd ] warning! bmp not "));
-      Serial.print(bmp_w);
-      Serial.print(F("x"));
-      Serial.println(bmp_h);
-    }
 
     if ((_read16(file) == 1) && (_read16(file) == 24) && (_read32(file) == 0))
     {
@@ -898,13 +868,11 @@ bool OXRS_LCD::_drawBmp(const char *filename, int16_t x, int16_t y, int16_t bmp_
       tft.setSwapBytes(oldSwapBytes);
 
       file.close();
-      Serial.println(F("[lcd ] bmp loaded ok"));
       return true;
     }
   }
   
   file.close();
-  Serial.println(F("[lcd ] bmp format not recognized"));
   return false;
 }
 
@@ -938,8 +906,6 @@ bool OXRS_LCD::_drawBmp_P(const uint8_t *image, int16_t x, int16_t y, int16_t bm
   uint8_t   r, g, b;
   uint8_t*  ptr;
 
-  Serial.println(F("[lcd ] loading logo from PROGMEM"));  
-
   ptr = (uint8_t*)image;
 
   if (_read16_P(&ptr) == 0x4D42)
@@ -950,13 +916,6 @@ bool OXRS_LCD::_drawBmp_P(const uint8_t *image, int16_t x, int16_t y, int16_t bm
     _read32_P(&ptr);
     w = _read32_P(&ptr);
     h = _read32_P(&ptr);
-    if ((w != bmp_w) || (h != bmp_h))
-    {
-      Serial.print(F("[lcd ] warning! bmp not "));
-      Serial.print(bmp_w);
-      Serial.print(F("x"));
-      Serial.println(bmp_h);
-    }
 
     if ((_read16_P(&ptr) == 1) && (_read16_P(&ptr) == 24) && (_read32_P(&ptr) == 0))
     {
@@ -990,12 +949,12 @@ bool OXRS_LCD::_drawBmp_P(const uint8_t *image, int16_t x, int16_t y, int16_t bm
         // crop to bmp_w
         tft.pushImage(x, y--, bmp_w, 1, (uint16_t*)lineBuffer);
       }
+
       tft.setSwapBytes(oldSwapBytes);
-      Serial.println(F("[lcd ] logo loaded ok"));
       return true;
     }
   }
-  Serial.println(F("[lcd ] bmp format not recognized"));
+
   return false;
 }
 
