@@ -66,7 +66,7 @@
 // return codes from draw_header
 #define     LCD_INFO_LOGO_FROM_SPIFFS     101   // logo found on SPIFFS and displayed
 #define     LCD_INFO_LOGO_FROM_PROGMEM    102   // logo found in PROGMEM and displayed
-#define     LCD_INFO_LOGO_DEFAULT         103   // used default OXRD logo
+#define     LCD_INFO_LOGO_DEFAULT         103   // used default OXRS logo
 #define     LCD_ERR_NO_LOGO               1     // no logo successfully rendered
 
 typedef struct LAYOUT_CONFIG 
