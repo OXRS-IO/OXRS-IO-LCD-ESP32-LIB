@@ -34,9 +34,10 @@ OXRS_LCD::OXRS_LCD(WiFiClass& wifi, OXRS_MQTT& mqtt)
   memset(_io_values, 0, sizeof(_io_values));
 }
 
-void OXRS_LCD::draw_header(const char * fwShortName, const char * fwMaker, const char * fwVersion, const char * fwPlatform, const uint8_t * fwLogo)
+int OXRS_LCD::draw_header(const char * fwShortName, const char * fwMaker, const char * fwVersion, const char * fwPlatform, const uint8_t * fwLogo)
 {
   char buffer[30];
+  int return_code;
 
   int logo_w = 40;
   int logo_h = 40;
@@ -46,11 +47,17 @@ void OXRS_LCD::draw_header(const char * fwShortName, const char * fwMaker, const
   // 1. try to draw maker supplied /logo.bmp from SPIFFS
   // 2, if not successful try to draw maker supplied logo via fwLogo (fwLogo from PROGMEM)
   // 3. if not successful draw embedded OXRS logo from PROGMEM
+  return_code = LCD_INFO_LOGO_FROM_SPIFFS;
   if (!_drawBmp("/logo.bmp", logo_x, logo_y, logo_w, logo_h))
   {
+    return_code = LCD_INFO_LOGO_FROM_PROGMEM;
     if (!fwLogo || !_drawBmp_P(fwLogo, logo_x, logo_y, logo_w, logo_h))
-    {
-      _drawBmp_P(OXRS_logo, logo_x, logo_y, logo_w, logo_h);
+    {  
+      return_code = LCD_INFO_LOGO_DEFAULT;
+      if (!_drawBmp_P(OXRS_logo, logo_x, logo_y, logo_w, logo_h))
+      {
+        return_code = LCD_ERR_NO_LOGO;
+      }
     }
   }
 
@@ -70,6 +77,8 @@ void OXRS_LCD::draw_header(const char * fwShortName, const char * fwMaker, const
   tft.setTextDatum(TC_DATUM);
   tft.setFreeFont(&Roboto_Mono_Thin_13);
   tft.drawString("Starting up...", 240/2 , 50); 
+  
+  return return_code;
 }
 
 /*
@@ -250,8 +259,6 @@ void OXRS_LCD::begin(uint32_t ontime_event, uint32_t ontime_display)
   
   _ontime_display = ontime_display;
   _ontime_event = ontime_event;
-
-  SPIFFS.begin();
 }
 
 /*
@@ -424,7 +431,7 @@ byte * OXRS_LCD::_get_MAC_address(byte * mac)
     return mac;
   }
   
-  memset(mac, 6, sizeof(mac));
+  memset(mac, 0, 6);
   return mac;
 }
 
@@ -816,6 +823,10 @@ bool OXRS_LCD::_drawBmp(const char *filename, int16_t x, int16_t y, int16_t bmp_
   uint32_t  seekOffset;
   uint16_t  w, h, row, col;
   uint8_t   r, g, b;
+
+
+  if (!SPIFFS.begin())
+    return false;
 
   File file = SPIFFS.open(filename, "r");
 
