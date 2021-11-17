@@ -63,6 +63,12 @@
 #define     PORT_STATE_ON           1
 #define     PORT_STATE_NA           2
 
+// return codes from draw_header
+#define     LCD_INFO_LOGO_FROM_SPIFFS     101   // logo found on SPIFFS and displayed
+#define     LCD_INFO_LOGO_FROM_PROGMEM    102   // logo found in PROGMEM and displayed
+#define     LCD_INFO_LOGO_DEFAULT         103   // used default OXRD logo
+#define     LCD_ERR_NO_LOGO               1     // no logo successfully rendered
+
 typedef struct LAYOUT_CONFIG 
   {
     int x;
@@ -79,7 +85,7 @@ class OXRS_LCD
     OXRS_LCD(EthernetClass& ethernet, OXRS_MQTT& mqtt);
     OXRS_LCD(WiFiClass& wifi, OXRS_MQTT& mqtt);
     
-    void draw_header(
+    int draw_header(
       const char * fwShortName, 
       const char * fwMaker, 
       const char * fwVersion, 
