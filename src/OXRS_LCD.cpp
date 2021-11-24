@@ -578,7 +578,8 @@ void OXRS_LCD::_show_MQTT_topic(const char * topic)
   tft.setFreeFont(&Roboto_Mono_Thin_13);
 
   char buffer[30];
-  sprintf(buffer, "MQTT: %s", topic);
+  strcpy(buffer, "MQTT: ");
+  strncat(buffer, topic, sizeof(buffer)-strlen(buffer)-1);
   tft.drawString(buffer, 12, 80);
 }
 
