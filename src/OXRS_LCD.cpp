@@ -8,8 +8,9 @@
 
 #include <TFT_eSPI.h>               // Hardware-specific library
 #include "OXRS_logo.h"              // default logo bitmap (24-bit-bitmap)
-#include "Free_Fonts.h"             // Include the header file attached to this sketch
-#include "roboto_fonts.h"
+#include "Free_Fonts.h"             // GFX Free Fonts supplied with TFT_eSPI
+#include "roboto_fonts.h"           // roboto_fonts Created by http://oleddisplay.squix.ch/
+#include "icons.h"                  // resource file for icons
 #include <pgmspace.h>
 
 TFT_eSPI tft = TFT_eSPI();          // Invoke library
@@ -514,6 +515,15 @@ void OXRS_LCD::_show_IP(IPAddress ip)
     sprintf(buffer, "IP  : %03d.%03d.%03d.%03d", ip[0], ip[1], ip[2], ip[3]);
   }
   tft.drawString(buffer, 12, 50);
+  
+  if (_wifi)
+  {
+    tft.drawBitmap(225, 51, icon_wifi, 11, 10, TFT_BLACK, TFT_WHITE);
+  }
+  if (_ethernet)
+  {
+    tft.drawBitmap(225, 51, icon_ethernet, 11, 10, TFT_BLACK, TFT_WHITE);
+  }
 }
 
 void OXRS_LCD::_show_MAC(byte mac[])
