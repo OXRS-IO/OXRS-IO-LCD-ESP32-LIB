@@ -53,7 +53,7 @@
 #define     IP_STATE_UNKNOWN        2
 
 // MQTT led states
-#define     MQTT_STATE_IDLE         0
+#define     MQTT_STATE_UP           0
 #define     MQTT_STATE_ACTIVE       1
 #define     MQTT_STATE_DOWN         2
 #define     MQTT_STATE_UNKNOWN      3
