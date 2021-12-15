@@ -350,7 +350,7 @@ void OXRS_LCD::loop(void)
   {
     if ((millis() - _last_rx_trigger) > RX_TX_LED_ON)
     {
-      _set_mqtt_rx_led(MQTT_STATE_IDLE);
+      _set_mqtt_rx_led(MQTT_STATE_UP);
       _last_rx_trigger = 0L;
     }
   }
@@ -360,7 +360,7 @@ void OXRS_LCD::loop(void)
   {
     if ((millis() - _last_tx_trigger) > RX_TX_LED_ON)
     {
-      _set_mqtt_tx_led(MQTT_STATE_IDLE);
+      _set_mqtt_tx_led(MQTT_STATE_UP);
       _last_tx_trigger = 0L;
     }
   }
@@ -534,7 +534,7 @@ int OXRS_LCD::_get_MQTT_state(void)
 {
   if (_get_IP_state() == IP_STATE_UP)
   {
-    return _mqtt->connected() ? MQTT_STATE_IDLE : MQTT_STATE_DOWN;
+    return _mqtt->connected() ? MQTT_STATE_UP : MQTT_STATE_DOWN;
   }
 
   return MQTT_STATE_UNKNOWN;
@@ -803,15 +803,15 @@ void OXRS_LCD::_set_ip_link_led(int state)
 
 void OXRS_LCD::_set_mqtt_rx_led(int state)
 {
-  // IDLE, ACTIVE, DOWN, UNKNOWN
-  uint16_t color[4] = {TFT_DARKGREY, TFT_YELLOW, TFT_RED, TFT_BLACK};  
+  // UP, ACTIVE, DOWN, UNKNOWN
+  uint16_t color[4] = {TFT_GREEN, TFT_YELLOW, TFT_RED, TFT_BLACK};  
   if (state < 4) tft.fillRoundRect(2, 80, 8, 5, 2, color[state]);
 }
 
 void OXRS_LCD::_set_mqtt_tx_led(int state)
 {
-  // IDLE, ACTIVE, DOWN, UNKNOWN
-  uint16_t color[4] = {TFT_DARKGREY, TFT_ORANGE, TFT_RED, TFT_BLACK};
+  // UP, ACTIVE, DOWN, UNKNOWN
+  uint16_t color[4] = {TFT_GREEN, TFT_ORANGE, TFT_RED, TFT_BLACK};
   if (state < 4) tft.fillRoundRect(2, 88, 8, 5, 2, color[state]);
 }
 
