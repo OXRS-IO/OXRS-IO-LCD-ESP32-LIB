@@ -508,21 +508,21 @@ void OXRS_LCD::_show_IP(IPAddress ip)
   char buffer[30];
   if (ip[0] == 0)
   {
-    sprintf(buffer, "IP  : ---.---.---.---");
+    sprintf(buffer, "  IP: ---.---.---.---");
   }
   else
   {
-    sprintf(buffer, "IP  : %03d.%03d.%03d.%03d", ip[0], ip[1], ip[2], ip[3]);
+    sprintf(buffer, "  IP: %03d.%03d.%03d.%03d", ip[0], ip[1], ip[2], ip[3]);
   }
   tft.drawString(buffer, 12, 50);
   
   if (_wifi)
   {
-    tft.drawBitmap(225, 51, icon_wifi, 11, 10, TFT_BLACK, TFT_WHITE);
+    tft.drawBitmap(13, 51, icon_wifi, 11, 10, TFT_BLACK, TFT_WHITE);
   }
   if (_ethernet)
   {
-    tft.drawBitmap(225, 51, icon_ethernet, 11, 10, TFT_BLACK, TFT_WHITE);
+    tft.drawBitmap(13, 51, icon_ethernet, 11, 10, TFT_BLACK, TFT_WHITE);
   }
 }
 
