@@ -536,7 +536,7 @@ void OXRS_LCD::_show_MAC(byte mac[])
   tft.setFreeFont(&Roboto_Mono_Thin_13);
 
   char buffer[30];
-  sprintf(buffer, "MAC : %02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+  sprintf(buffer, " MAC: %02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
   tft.drawString(buffer, 12, 65);
 }
 
