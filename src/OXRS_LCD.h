@@ -33,10 +33,9 @@
 #define     PORT_LAYOUT_OUTPUT_96   2096
 #define     PORT_LAYOUT_OUTPUT_128  2128
 #define     PORT_LAYOUT_IO_48       3048
-#define     PORT_LAYOUT_HYBRID      4000
-#define     PORT_LAYOUT_HYBRID_2    4002
-#define     PORT_LAYOUT_HYBRID_4    4004
-#define     PORT_LAYOUT_HYBRID_6    4006
+#define     PORT_LAYOUT_IO_32_96    4002
+#define     PORT_LAYOUT_IO_64_64    4004
+#define     PORT_LAYOUT_IO_96_32    4006
 
 
 #define     LCD_BL_ON               100       // LCD backlight in % when ON, i.e. after an event

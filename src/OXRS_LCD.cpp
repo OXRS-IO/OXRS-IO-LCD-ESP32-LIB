@@ -247,7 +247,7 @@ void OXRS_LCD::draw_ports(int port_layout, uint8_t mcps_found)
   {
     // configure outline of input ports
     switch (_port_layout) {
-      case PORT_LAYOUT_HYBRID_2:
+      case PORT_LAYOUT_IO_32_96:
         _layout_config.x = 0;
         _layout_config.y = 115;
         _layout_config.xo = 25+47;
@@ -255,7 +255,7 @@ void OXRS_LCD::draw_ports(int port_layout, uint8_t mcps_found)
         _layout_config.bh = 19;
         _layout_config.index_max = 32;
         break;
-      case PORT_LAYOUT_HYBRID_4:
+      case PORT_LAYOUT_IO_64_64:
         _layout_config.x = 0;
         _layout_config.y = 115;
         _layout_config.xo = 25; 
@@ -263,7 +263,7 @@ void OXRS_LCD::draw_ports(int port_layout, uint8_t mcps_found)
         _layout_config.bh = 19;
         _layout_config.index_max = 64;
         break;
-      case PORT_LAYOUT_HYBRID_6:
+      case PORT_LAYOUT_IO_96_32:
         _layout_config.x = 0;
         _layout_config.y = 115;
         _layout_config.xo = 2; 
@@ -291,7 +291,7 @@ void OXRS_LCD::draw_ports(int port_layout, uint8_t mcps_found)
 
     // configure outline output ports
     switch (_port_layout) {
-      case PORT_LAYOUT_HYBRID_2:
+      case PORT_LAYOUT_IO_32_96:
         _layout_config.x = 0;
         _layout_config.y = 158;
         _layout_config.xo = 4;
@@ -300,7 +300,7 @@ void OXRS_LCD::draw_ports(int port_layout, uint8_t mcps_found)
         _layout_config.index_max = 96;
         frame_h = _layout_config.bh * 3 + 8;
         break;
-      case PORT_LAYOUT_HYBRID_4:
+      case PORT_LAYOUT_IO_64_64:
         _layout_config.x = 0;
         _layout_config.y = 168;
         _layout_config.xo = 4;
@@ -309,7 +309,7 @@ void OXRS_LCD::draw_ports(int port_layout, uint8_t mcps_found)
         _layout_config.index_max = 64;
         frame_h = _layout_config.bh * 2 + 6;
         break;
-      case PORT_LAYOUT_HYBRID_6:
+      case PORT_LAYOUT_IO_96_32:
         _layout_config.x = 0;
         _layout_config.y = 178;
         _layout_config.xo = 4;
@@ -404,9 +404,9 @@ void OXRS_LCD::process(int mcp, uint16_t io_value)
             }
             break;
           // hybrid ports
-          case PORT_LAYOUT_HYBRID_2:
-          case PORT_LAYOUT_HYBRID_4:
-          case PORT_LAYOUT_HYBRID_6:
+          case PORT_LAYOUT_IO_32_96:
+          case PORT_LAYOUT_IO_64_64:
+          case PORT_LAYOUT_IO_96_32:
             if ((index+i+1) <= _layout_config_in.index_max)
             {
               _layout_config = _layout_config_in;
@@ -730,7 +730,7 @@ void OXRS_LCD::_update_input(uint8_t type, uint8_t index, int state)
   index -= 1;
   port = index / 4;
   y = y + (port % 2) * bh;
-  if (_port_layout == PORT_LAYOUT_INPUT_96 || _port_layout == PORT_LAYOUT_HYBRID_6)
+  if (_port_layout == PORT_LAYOUT_INPUT_96 || _port_layout == PORT_LAYOUT_IO_96_32)
   {
     xo = xo + (port / 8) * 3;
     x = xo + (port / 2) * bw;
