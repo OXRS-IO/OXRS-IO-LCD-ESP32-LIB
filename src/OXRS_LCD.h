@@ -95,7 +95,7 @@ class OXRS_LCD
       const char * fwVersion, 
       const char * fwPlatform, 
       const uint8_t * fwLogo = NULL);
-    void draw_ports (int port_layout, uint8_t mcps_found);
+    void draw_ports (int port_layout, uint8_t mcps_found, int mcp_output_pins = 16);
 
     void begin (uint32_t ontime_event=LCD_EVENT_MS, uint32_t ontime_display=LCD_ON_MS);
     void process (int mcp, uint16_t io_value);
@@ -129,6 +129,8 @@ class OXRS_LCD
     // defines how i/o ports are displayed and animated
     int             _port_layout;
     layout_config   _layout_config, _layout_config_in, _layout_config_out;
+    int             _mcp_output_pins;
+    bool            _hw_supported;
      
    // history buffer of io_values to extract changes
     uint16_t _io_values[8];
