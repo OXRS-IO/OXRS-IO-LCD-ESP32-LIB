@@ -242,7 +242,101 @@ void OXRS_LCD::draw_ports(int port_layout, uint8_t mcps_found)
     }  
   }
 
-  // fill bottom field with grey (event display space)
+  // handle hybrid configurations
+  if ((_port_layout / 1000) == 4)
+  {
+    // configure outline of input ports
+    switch (_port_layout) {
+      case PORT_LAYOUT_IO_32_96:
+        _layout_config.x = 0;
+        _layout_config.y = 115;
+        _layout_config.xo = 25+47;
+        _layout_config.bw = 23;
+        _layout_config.bh = 19;
+        _layout_config.index_max = 32;
+        break;
+      case PORT_LAYOUT_IO_64_64:
+        _layout_config.x = 0;
+        _layout_config.y = 115;
+        _layout_config.xo = 25; 
+        _layout_config.bw = 23;
+        _layout_config.bh = 19;
+        _layout_config.index_max = 64;
+        break;
+      case PORT_LAYOUT_IO_96_32:
+        _layout_config.x = 0;
+        _layout_config.y = 115;
+        _layout_config.xo = 2; 
+        _layout_config.bw = 19;
+        _layout_config.bh = 19;
+        _layout_config.index_max = 96;
+        break;
+    }
+    _layout_config_in = _layout_config;
+    
+    // draw outline as configured
+    for (int index = 1; index <= _layout_config.index_max; index += 16)
+    {
+      int state = (bitRead(mcps_found, 0)) ? PORT_STATE_OFF : PORT_STATE_NA;
+      for (int i = 0; i < 16; i++)
+      {
+        if ((i % 4) == 0)
+        {
+          _update_input(TYPE_FRAME, index+i, state);
+        }
+        _update_input(TYPE_STATE, index+i, state);
+      }
+      mcps_found >>= 1;
+    }
+
+    // configure outline output ports
+    switch (_port_layout) {
+      case PORT_LAYOUT_IO_32_96:
+        _layout_config.x = 0;
+        _layout_config.y = 158;
+        _layout_config.xo = 4;
+        _layout_config.bw = 8;
+        _layout_config.bh = 19;
+        _layout_config.index_max = 96;
+        frame_h = _layout_config.bh * 3 + 8;
+        break;
+      case PORT_LAYOUT_IO_64_64:
+        _layout_config.x = 0;
+        _layout_config.y = 168;
+        _layout_config.xo = 4;
+        _layout_config.bw = 8;
+        _layout_config.bh = 19;
+        _layout_config.index_max = 64;
+        frame_h = _layout_config.bh * 2 + 6;
+        break;
+      case PORT_LAYOUT_IO_96_32:
+        _layout_config.x = 0;
+        _layout_config.y = 178;
+        _layout_config.xo = 4;
+        _layout_config.bw = 8;
+        _layout_config.bh = 19;
+        _layout_config.index_max = 32;
+        frame_h = _layout_config.bh + 4;
+        break;
+    }
+    _layout_config_out = _layout_config;
+    
+    // draw outline as configured   
+    tft.fillRect(0, _layout_config.y-2, 240, frame_h,  TFT_WHITE);
+    for (int index = 1; index <= _layout_config.index_max; index += 16)
+    {
+      int state = (bitRead(mcps_found, 0)) ? PORT_STATE_OFF : PORT_STATE_NA;
+      for (int i = 0; i < 16; i++)
+      {
+        _update_output(TYPE_FRAME, index+i, state);
+        _update_output(TYPE_STATE, index+i, state);
+      }
+      mcps_found >>= 1;
+    }  
+    
+  }   
+
+  // fill bottom field with gray (event display space)
   _clear_event();
 }
 
@@ -289,24 +383,39 @@ void OXRS_LCD::process(int mcp, uint16_t io_value)
           case PORT_LAYOUT_INPUT_64:
           case PORT_LAYOUT_INPUT_96:
           case PORT_LAYOUT_INPUT_128:
-            _update_input(TYPE_STATE, index+i+1, bitRead(io_value, i) ? PORT_STATE_OFF: PORT_STATE_ON); 
+            _update_input(TYPE_STATE, index+i+1, bitRead(io_value, i) ? PORT_STATE_OFF : PORT_STATE_ON); 
             break;
           // outport ports
           case PORT_LAYOUT_OUTPUT_32:
           case PORT_LAYOUT_OUTPUT_64:
           case PORT_LAYOUT_OUTPUT_96:
           case PORT_LAYOUT_OUTPUT_128:
-            _update_output(TYPE_STATE, index+i+1, bitRead(io_value, i) ? PORT_STATE_ON: PORT_STATE_OFF); 
+            _update_output(TYPE_STATE, index+i+1, bitRead(io_value, i) ? PORT_STATE_ON : PORT_STATE_OFF); 
             break;
           // input and output ports mixed
           case PORT_LAYOUT_IO_48:
             if (index < 16)
             {
-              _update_io_48(TYPE_STATE, index+i+1, bitRead(io_value, i) ? PORT_STATE_OFF: PORT_STATE_ON);
+              _update_io_48(TYPE_STATE, index+i+1, bitRead(io_value, i) ? PORT_STATE_OFF : PORT_STATE_ON);
             } 
             else
             {
-              _update_io_48(TYPE_STATE, index+i+1, bitRead(io_value, i) ? PORT_STATE_ON: PORT_STATE_OFF);
+              _update_io_48(TYPE_STATE, index+i+1, bitRead(io_value, i) ? PORT_STATE_ON : PORT_STATE_OFF);
+            }
+            break;
+          // hybrid ports
+          case PORT_LAYOUT_IO_32_96:
+          case PORT_LAYOUT_IO_64_64:
+          case PORT_LAYOUT_IO_96_32:
+            if ((index+i+1) <= _layout_config_in.index_max)
+            {
+              _layout_config = _layout_config_in;
+              _update_input(TYPE_STATE, index+i+1, bitRead(io_value, i) ? PORT_STATE_OFF : PORT_STATE_ON); 
+            }
+            else
+            {
+              _layout_config = _layout_config_out;
+              _update_output(TYPE_STATE, (index+i+1) - _layout_config_in.index_max, bitRead(io_value, i) ? PORT_STATE_ON : PORT_STATE_OFF); 
             }
             break;
         }
@@ -621,7 +730,7 @@ void OXRS_LCD::_update_input(uint8_t type, uint8_t index, int state)
   index -= 1;
   port = index / 4;
   y = y + (port % 2) * bh;
-  if (_port_layout == PORT_LAYOUT_INPUT_96)
+  if (_port_layout == PORT_LAYOUT_INPUT_96 || _port_layout == PORT_LAYOUT_IO_96_32)
   {
     xo = xo + (port / 8) * 3;
     x = xo + (port / 2) * bw;
