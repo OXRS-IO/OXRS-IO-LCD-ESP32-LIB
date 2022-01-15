@@ -22,20 +22,23 @@
 #define     TYPE_STATE              1
 
 // port layout configurations
-#define     PORT_LAYOUT_INPUT_AUTO  1000
-#define     PORT_LAYOUT_INPUT_32    1032
-#define     PORT_LAYOUT_INPUT_64    1064
-#define     PORT_LAYOUT_INPUT_96    1096
-#define     PORT_LAYOUT_INPUT_128   1128
-#define     PORT_LAYOUT_OUTPUT_AUTO 2000
-#define     PORT_LAYOUT_OUTPUT_32   2032
-#define     PORT_LAYOUT_OUTPUT_64   2064
-#define     PORT_LAYOUT_OUTPUT_96   2096
-#define     PORT_LAYOUT_OUTPUT_128  2128
-#define     PORT_LAYOUT_IO_48       3048
-#define     PORT_LAYOUT_IO_32_96    4002
-#define     PORT_LAYOUT_IO_64_64    4004
-#define     PORT_LAYOUT_IO_96_32    4006
+#define     PORT_LAYOUT_INPUT_AUTO    1000
+#define     PORT_LAYOUT_INPUT_32      1032
+#define     PORT_LAYOUT_INPUT_64      1064
+#define     PORT_LAYOUT_INPUT_96      1096
+#define     PORT_LAYOUT_INPUT_128     1128
+#define     PORT_LAYOUT_OUTPUT_AUTO   2000
+#define     PORT_LAYOUT_OUTPUT_32     2032
+#define     PORT_LAYOUT_OUTPUT_64     2064
+#define     PORT_LAYOUT_OUTPUT_96     2096
+#define     PORT_LAYOUT_OUTPUT_128    2128
+#define     PORT_LAYOUT_OUTPUT_AUTO_8 2800
+#define     PORT_LAYOUT_OUTPUT_32_8   2832
+#define     PORT_LAYOUT_OUTPUT_64_8   2864
+#define     PORT_LAYOUT_IO_48         3048
+#define     PORT_LAYOUT_IO_32_96      4002
+#define     PORT_LAYOUT_IO_64_64      4004
+#define     PORT_LAYOUT_IO_96_32      4006
 
 
 #define     LCD_BL_ON               100       // LCD backlight in % when ON, i.e. after an event
@@ -95,7 +98,7 @@ class OXRS_LCD
       const char * fwVersion, 
       const char * fwPlatform, 
       const uint8_t * fwLogo = NULL);
-    void draw_ports (int port_layout, uint8_t mcps_found, int mcp_output_pins = 16);
+    void draw_ports (int port_layout, uint8_t mcps_found);
 
     void begin (uint32_t ontime_event=LCD_EVENT_MS, uint32_t ontime_display=LCD_ON_MS);
     void process (int mcp, uint16_t io_value);
@@ -130,7 +133,6 @@ class OXRS_LCD
     int             _port_layout;
     layout_config   _layout_config, _layout_config_in, _layout_config_out;
     int             _mcp_output_pins;
-    bool            _hw_supported;
      
    // history buffer of io_values to extract changes
     uint16_t _io_values[8];

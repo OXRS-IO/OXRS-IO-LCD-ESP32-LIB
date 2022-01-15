@@ -86,25 +86,10 @@ int OXRS_LCD::draw_header(const char * fwShortName, const char * fwMaker, const 
  * draw ports according to PORT_LAYOUT_... on screen 
  * show i/o's as inactive
 */
-void OXRS_LCD::draw_ports(int port_layout, uint8_t mcps_found, int mcp_output_pins)
+void OXRS_LCD::draw_ports(int port_layout, uint8_t mcps_found)
 { 
-  // check if supported HW
-  if ((mcp_output_pins != 16) && (mcp_output_pins != 8))
-  {
-    tft.fillRect(0, 150, 240, 20,  TFT_WHITE);
-    tft.setTextColor(TFT_BLACK, TFT_WHITE);
-    tft.setTextDatum(TC_DATUM);
-    tft.setFreeFont(FMB9);       // Select Free Mono Bold 9
-    tft.drawString("not supported config", 120, 151);
-    tft.setTextColor(TFT_WHITE, TFT_BLACK);
-
-    _hw_supported = false;
-    return;
-  }
-  
   _port_layout = port_layout;
-  _mcp_output_pins = mcp_output_pins;
-  _hw_supported = true;
+  _mcp_output_pins = 16;
  
   // handle input configurations
   if ((_port_layout / 1000) == 1)
@@ -180,16 +165,21 @@ void OXRS_LCD::draw_ports(int port_layout, uint8_t mcps_found, int mcp_output_pi
       if (mcps_found < 0x10) {_port_layout = PORT_LAYOUT_OUTPUT_64;}
       if (mcps_found < 0x04) {_port_layout = PORT_LAYOUT_OUTPUT_32;}
     }
-    // trim layout for 8 outputs/mcp (only 2 rows max)
-    if (_mcp_output_pins == 8)
+    if (_port_layout == PORT_LAYOUT_OUTPUT_AUTO_8)
     {
-      if (_port_layout == PORT_LAYOUT_OUTPUT_64)  {_port_layout = PORT_LAYOUT_OUTPUT_32;}
-      if (_port_layout == PORT_LAYOUT_OUTPUT_96)  {_port_layout = PORT_LAYOUT_OUTPUT_64;}
-      if (_port_layout == PORT_LAYOUT_OUTPUT_128) {_port_layout = PORT_LAYOUT_OUTPUT_64;}
+      _port_layout = PORT_LAYOUT_OUTPUT_64_8;
+      if (mcps_found < 0x10) {_port_layout = PORT_LAYOUT_OUTPUT_32_8;}
     }
+    // check for 8/16 MCP
+    if ((_port_layout % 1000) >= 800)
+    {
+      _mcp_output_pins = 8;
+    }
+    
     // configure outline
     switch (_port_layout) {
       case PORT_LAYOUT_OUTPUT_32:
+      case PORT_LAYOUT_OUTPUT_32_8:
         _layout_config.x = 0;
         _layout_config.y = 159;
         _layout_config.xo = 4;
@@ -199,6 +189,7 @@ void OXRS_LCD::draw_ports(int port_layout, uint8_t mcps_found, int mcp_output_pi
         frame_h = _layout_config.bh + 4;
         break;
       case PORT_LAYOUT_OUTPUT_64:
+      case PORT_LAYOUT_OUTPUT_64_8:
         _layout_config.x = 0;
         _layout_config.y = 148;
         _layout_config.xo = 4;
@@ -388,8 +379,6 @@ void OXRS_LCD::process(int mcp, uint16_t io_value)
 {
   int i, index;
   uint16_t changed;
- 
-  if(!_hw_supported) return;
   
   // Compare with last stored value
   changed = io_value ^ _io_values[mcp];
@@ -415,6 +404,8 @@ void OXRS_LCD::process(int mcp, uint16_t io_value)
           case PORT_LAYOUT_OUTPUT_64:
           case PORT_LAYOUT_OUTPUT_96:
           case PORT_LAYOUT_OUTPUT_128:
+          case PORT_LAYOUT_OUTPUT_32_8:
+          case PORT_LAYOUT_OUTPUT_64_8:
             _update_output(TYPE_STATE, index+i+1, bitRead(io_value, i) ? PORT_STATE_ON : PORT_STATE_OFF); 
             break;
           // input and output ports mixed
