@@ -90,6 +90,7 @@ void OXRS_LCD::draw_ports(int port_layout, uint8_t mcps_found)
 { 
   _port_layout = port_layout;
   _mcp_output_pins = 16;
+  _mcp_output_start = 8;
  
   // handle input configurations
   if ((_port_layout / 1000) == 1)
@@ -259,9 +260,16 @@ void OXRS_LCD::draw_ports(int port_layout, uint8_t mcps_found)
   // handle hybrid configurations
   if ((_port_layout / 1000) == 4)
   {
+    // check for 8/16 MCP
+    if ((_port_layout % 1000) >= 800)
+    {
+      _mcp_output_pins = 8;
+    }
+
     // configure outline of input ports
     switch (_port_layout) {
       case PORT_LAYOUT_IO_32_96:
+      case PORT_LAYOUT_IO_32_96_8:
         _layout_config.x = 0;
         _layout_config.y = 115;
         _layout_config.xo = 25+47;
@@ -270,6 +278,7 @@ void OXRS_LCD::draw_ports(int port_layout, uint8_t mcps_found)
         _layout_config.index_max = 32;
         break;
       case PORT_LAYOUT_IO_64_64:
+      case PORT_LAYOUT_IO_64_64_8:
         _layout_config.x = 0;
         _layout_config.y = 115;
         _layout_config.xo = 25; 
@@ -278,6 +287,7 @@ void OXRS_LCD::draw_ports(int port_layout, uint8_t mcps_found)
         _layout_config.index_max = 64;
         break;
       case PORT_LAYOUT_IO_96_32:
+      case PORT_LAYOUT_IO_96_32_8:
         _layout_config.x = 0;
         _layout_config.y = 115;
         _layout_config.xo = 2; 
@@ -313,6 +323,7 @@ void OXRS_LCD::draw_ports(int port_layout, uint8_t mcps_found)
         _layout_config.bh = 19;
         _layout_config.index_max = 96;
         frame_h = _layout_config.bh * 3 + 8;
+        _mcp_output_start = 2;
         break;
       case PORT_LAYOUT_IO_64_64:
         _layout_config.x = 0;
@@ -322,6 +333,7 @@ void OXRS_LCD::draw_ports(int port_layout, uint8_t mcps_found)
         _layout_config.bh = 19;
         _layout_config.index_max = 64;
         frame_h = _layout_config.bh * 2 + 6;
+        _mcp_output_start = 4;
         break;
       case PORT_LAYOUT_IO_96_32:
         _layout_config.x = 0;
@@ -331,16 +343,48 @@ void OXRS_LCD::draw_ports(int port_layout, uint8_t mcps_found)
         _layout_config.bh = 19;
         _layout_config.index_max = 32;
         frame_h = _layout_config.bh + 4;
+        _mcp_output_start = 6;
+        break;
+        
+      case PORT_LAYOUT_IO_32_96_8:
+        _layout_config.x = 0;
+        _layout_config.y = 168;
+        _layout_config.xo = 4;
+        _layout_config.bw = 8;
+        _layout_config.bh = 19;
+        _layout_config.index_max = 64;
+        frame_h = _layout_config.bh * 2 + 6;
+        _mcp_output_start = 2;
+        break;
+      case PORT_LAYOUT_IO_64_64_8:
+        _layout_config.x = 0;
+        _layout_config.y = 178;
+        _layout_config.xo = 4;
+        _layout_config.bw = 8;
+        _layout_config.bh = 19;
+        _layout_config.index_max = 32;
+        frame_h = _layout_config.bh + 4;
+        _mcp_output_start = 4;
+        break;
+      case PORT_LAYOUT_IO_96_32_8:
+        _layout_config.x = 0;
+        _layout_config.y = 178;
+        _layout_config.xo = 4;
+        _layout_config.bw = 8;
+        _layout_config.bh = 19;
+        _layout_config.index_max = 32;
+        frame_h = _layout_config.bh + 4;
+        _mcp_output_start = 6;
         break;
     }
     _layout_config_out = _layout_config;
     
     // draw outline as configured   
     tft.fillRect(0, _layout_config.y-2, 240, frame_h,  TFT_WHITE);
-    for (int index = 1; index <= _layout_config.index_max; index += 16)
+    for (int index = 1; index <= _layout_config.index_max; index += _mcp_output_pins)
     {
       int state = (bitRead(mcps_found, 0)) ? PORT_STATE_OFF : PORT_STATE_NA;
-      for (int i = 0; i < 16; i++)
+      for (int i = 0; i < _mcp_output_pins; i++)
       {
         _update_output(TYPE_FRAME, index+i, state);
         _update_output(TYPE_STATE, index+i, state);
@@ -379,13 +423,34 @@ void OXRS_LCD::process(int mcp, uint16_t io_value)
 {
   int i, index;
   uint16_t changed;
+  int pin_count;
   
   // Compare with last stored value
   changed = io_value ^ _io_values[mcp];
   if (changed)
   {
-    index = mcp * _mcp_output_pins;
-    for (i = 0; i < _mcp_output_pins; i++)
+    if (_mcp_output_start > 7)
+    // no splitted configuration
+    {
+      index = mcp * _mcp_output_pins;
+      pin_count = _mcp_output_pins;
+    }
+    else
+    {
+      if (mcp < _mcp_output_start)
+      // input mcps (16 pins)
+      {
+        index = mcp * 16;
+        pin_count = 16;
+      }
+      else
+      // output mcps / handle 8/16
+      {
+         index = _mcp_output_start * 16 + (mcp - _mcp_output_start) * _mcp_output_pins;
+         pin_count = _mcp_output_pins;
+      }
+    }
+    for (i = 0; i < pin_count; i++)
     {
       if (bitRead(changed, i))
       {
@@ -423,6 +488,9 @@ void OXRS_LCD::process(int mcp, uint16_t io_value)
           case PORT_LAYOUT_IO_32_96:
           case PORT_LAYOUT_IO_64_64:
           case PORT_LAYOUT_IO_96_32:
+          case PORT_LAYOUT_IO_32_96_8:
+          case PORT_LAYOUT_IO_64_64_8:
+          case PORT_LAYOUT_IO_96_32_8:
             if ((index+i+1) <= _layout_config_in.index_max)
             {
               _layout_config = _layout_config_in;
@@ -746,7 +814,10 @@ void OXRS_LCD::_update_input(uint8_t type, uint8_t index, int state)
   index -= 1;
   port = index / 4;
   y = y + (port % 2) * bh;
-  if (_port_layout == PORT_LAYOUT_INPUT_96 || _port_layout == PORT_LAYOUT_IO_96_32)
+  if (    _port_layout == PORT_LAYOUT_INPUT_96 
+      ||  _port_layout == PORT_LAYOUT_IO_96_32 
+      ||  _port_layout == PORT_LAYOUT_IO_96_32_8
+      )
   {
     xo = xo + (port / 8) * 3;
     x = xo + (port / 2) * bw;

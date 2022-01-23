@@ -39,6 +39,9 @@
 #define     PORT_LAYOUT_IO_32_96      4002
 #define     PORT_LAYOUT_IO_64_64      4004
 #define     PORT_LAYOUT_IO_96_32      4006
+#define     PORT_LAYOUT_IO_32_96_8    4802
+#define     PORT_LAYOUT_IO_64_64_8    4804
+#define     PORT_LAYOUT_IO_96_32_8    4806
 
 
 #define     LCD_BL_ON               100       // LCD backlight in % when ON, i.e. after an event
@@ -133,6 +136,7 @@ class OXRS_LCD
     int             _port_layout;
     layout_config   _layout_config, _layout_config_in, _layout_config_out;
     int             _mcp_output_pins;
+    int             _mcp_output_start;
      
    // history buffer of io_values to extract changes
     uint16_t _io_values[8];
