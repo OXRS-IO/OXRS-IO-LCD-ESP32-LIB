@@ -53,23 +53,28 @@ void OXRS_LCD::begin()
 // value range: 
 //    0          : ever (no timer)
 //    1 .. 600   : time in seconds (10 minutes max) range can be defined by the UI, not checked here
-void OXRS_LCD::setEventTimes (int ontime_display, int ontime_event)
+void OXRS_LCD::setOnTimeDisplay (int ontime_display)
 {
   _ontime_display_ms = ontime_display * 1000;
+}
+
+void OXRS_LCD::setOnTimeEvent (int ontime_event)
+{
   _ontime_event_ms = ontime_event * 1000;
 }
 
 // brightness_on  : brightness when on        (default: 100 %)
 // brightness_dim : brightness when dimmed    (default:  10 %)
 // value range    : 0 .. 100  : brightness in %  range can be defined by the UI, not checked here
-void OXRS_LCD::setBrightness (int brightness_on, int brightness_dim)
+void OXRS_LCD::setBrightnessOn (int brightness_on)
 {
   _brightness_on = brightness_on;
-  _brightness_dim = brightness_dim;
-  
-  _set_backlight(_brightness_on);
 }
 
+void OXRS_LCD::setBrightnessDim (int brightness_dim)
+{
+  _brightness_dim = brightness_dim;
+}
 
 int OXRS_LCD::draw_header(const char * fwShortName, const char * fwMaker, const char * fwVersion, const char * fwPlatform, const uint8_t * fwLogo)
 {

@@ -113,8 +113,10 @@ class OXRS_LCD
     void show_temp (float temperature);
     void show_event (const char * s_event);
     
-    void setBrightness (int brightness_on, int brightness_dim);
-    void setEventTimes (int ontime_display, int ontime_event);
+    void setBrightnessOn (int brightness_on);
+    void setBrightnessDim (int brightness_dim);
+    void setOnTimeDisplay (int ontime_display);
+    void setOnTimeEvent (int ontime_event);
 
   private:  
     // for timeout (clear) of bottom line input event display
