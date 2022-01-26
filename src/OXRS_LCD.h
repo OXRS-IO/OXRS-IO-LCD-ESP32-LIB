@@ -103,7 +103,7 @@ class OXRS_LCD
       const uint8_t * fwLogo = NULL);
     void draw_ports (int port_layout, uint8_t mcps_found);
 
-    void begin (uint32_t ontime_event=LCD_EVENT_MS, uint32_t ontime_display=LCD_ON_MS);
+    void begin (void);
     void process (int mcp, uint16_t io_value);
     void loop(void);
     
@@ -113,6 +113,9 @@ class OXRS_LCD
     void show_temp (float temperature);
     void show_event (const char * s_event);
     
+    void setBrightness (int brightness_on, int brightness_dim);
+    void setEventTimes (int ontime_display, int ontime_event);
+
   private:  
     // for timeout (clear) of bottom line input event display
     uint32_t _last_event_display = 0L;
@@ -122,8 +125,10 @@ class OXRS_LCD
     uint32_t _last_tx_trigger = 0L;
     uint32_t _last_rx_trigger = 0L;
 
-    uint32_t _ontime_display;
-    uint32_t _ontime_event;
+    uint32_t  _ontime_display_ms = LCD_ON_MS;
+    uint32_t  _ontime_event_ms = LCD_EVENT_MS;
+    int       _brightness_on = LCD_BL_ON;
+    int       _brightness_dim = LCD_BL_DIM;
 
     EthernetClass * _ethernet;
     WiFiClass *     _wifi;

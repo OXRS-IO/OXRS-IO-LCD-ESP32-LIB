@@ -9,6 +9,8 @@ OXRS_LCD                     KEYWORD1
 #######################################
 
 begin                        KEYWORD2
+setBrightness                KEYWORD2
+setEventTimes                KEYWORD2
 draw_header                  KEYWORD2
 draw_ports                   KEYWORD2
 show_MQTT_topic              KEYWORD2
