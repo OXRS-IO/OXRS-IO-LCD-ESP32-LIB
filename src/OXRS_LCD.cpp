@@ -35,6 +35,47 @@ OXRS_LCD::OXRS_LCD(WiFiClass& wifi, OXRS_MQTT& mqtt)
   memset(_io_values, 0, sizeof(_io_values));
 }
 
+void OXRS_LCD::begin()
+{
+  // initialise the display
+  tft.begin();
+  tft.setRotation(1);
+  tft.fillRect(0, 0, 240, 240,  TFT_BLACK);
+
+  // set up for backlight dimming (PWM)
+  ledcSetup(BL_PWM_CHANNEL, BL_PWM_FREQ, BL_PWM_RESOLUTION);
+  ledcAttachPin(TFT_BL, BL_PWM_CHANNEL);
+  _set_backlight(_brightness_on);
+}
+
+// ontime_display : display on after event occured    (default: 10 seconds)
+// ontime_event   : time to show event on bottom line (default: 3 seconds)
+// value range: 
+//    0          : ever (no timer)
+//    1 .. 600   : time in seconds (10 minutes max) range can be defined by the UI, not checked here
+void OXRS_LCD::setOnTimeDisplay (int ontime_display)
+{
+  _ontime_display_ms = ontime_display * 1000;
+}
+
+void OXRS_LCD::setOnTimeEvent (int ontime_event)
+{
+  _ontime_event_ms = ontime_event * 1000;
+}
+
+// brightness_on  : brightness when on        (default: 100 %)
+// brightness_dim : brightness when dimmed    (default:  10 %)
+// value range    : 0 .. 100  : brightness in %  range can be defined by the UI, not checked here
+void OXRS_LCD::setBrightnessOn (int brightness_on)
+{
+  _brightness_on = brightness_on;
+}
+
+void OXRS_LCD::setBrightnessDim (int brightness_dim)
+{
+  _brightness_dim = brightness_dim;
+}
+
 int OXRS_LCD::draw_header(const char * fwShortName, const char * fwMaker, const char * fwVersion, const char * fwPlatform, const uint8_t * fwLogo)
 {
   char buffer[30];
@@ -398,22 +439,6 @@ void OXRS_LCD::draw_ports(int port_layout, uint8_t mcps_found)
   _clear_event();
 }
 
-void OXRS_LCD::begin(uint32_t ontime_event, uint32_t ontime_display)
-{
-  // initialise the display
-  tft.begin();
-  tft.setRotation(1);
-  tft.fillRect(0, 0, 240, 240,  TFT_BLACK);
-
-  // set up for backlight dimming (PWM)
-  ledcSetup(BL_PWM_CHANNEL, BL_PWM_FREQ, BL_PWM_RESOLUTION);
-  ledcAttachPin(TFT_BL, BL_PWM_CHANNEL);
-  _set_backlight(LCD_BL_ON);
-  
-  _ontime_display = ontime_display;
-  _ontime_event = ontime_event;
-}
-
 /*
  * process io_value :
  * check for changes vs last stored value
@@ -454,7 +479,7 @@ void OXRS_LCD::process(int mcp, uint16_t io_value)
     {
       if (bitRead(changed, i))
       {
-        _set_backlight(LCD_BL_ON);
+        _set_backlight(_brightness_on);
         _last_lcd_trigger = millis();
         switch (_port_layout) {
           // input ports
@@ -520,9 +545,9 @@ void OXRS_LCD::process(int mcp, uint16_t io_value)
 void OXRS_LCD::loop(void)
 {
   // Clear event display if timed out
-  if (_ontime_event && _last_event_display)
+  if (_ontime_event_ms && _last_event_display)
   {
-    if ((millis() - _last_event_display) > _ontime_event)
+    if ((millis() - _last_event_display) > _ontime_event_ms)
     {
       _clear_event();      
       _last_event_display = 0L;
@@ -530,11 +555,11 @@ void OXRS_LCD::loop(void)
   }
 
   // Dim LCD if timed out
-  if (_ontime_display && _last_lcd_trigger)
+  if (_ontime_display_ms && _last_lcd_trigger)
   {
-    if ((millis() - _last_lcd_trigger) > _ontime_display)
+    if ((millis() - _last_lcd_trigger) > _ontime_display_ms)
     {
-      _set_backlight(LCD_BL_DIM);
+      _set_backlight(_brightness_dim);
       _last_lcd_trigger = 0L;
     }
   }
