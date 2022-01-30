@@ -147,6 +147,7 @@ class OXRS_LCD
      
    // history buffer of io_values to extract changes
     uint16_t _io_values[8];
+    uint16_t _io_values_initialised = 0;
     
     void _clear_event(void);
     

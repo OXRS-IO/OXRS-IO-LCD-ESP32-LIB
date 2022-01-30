@@ -132,6 +132,7 @@ void OXRS_LCD::draw_ports(int port_layout, uint8_t mcps_found)
   _port_layout = port_layout;
   _mcp_output_pins = 16;
   _mcp_output_start = 8;
+  _io_values_initialised = 0;
  
   // handle input configurations
   if ((_port_layout / 1000) == 1)
@@ -450,8 +451,17 @@ void OXRS_LCD::process(int mcp, uint16_t io_value)
   uint16_t changed;
   int pin_count;
   
+  // check if io_values initilased, if not -> force display update
+  if (!bitRead(_io_values_initialised, mcp))
+  {
+    changed = 0xffff;
+    bitSet(_io_values_initialised, mcp);
+  }
   // Compare with last stored value
-  changed = io_value ^ _io_values[mcp];
+  else
+  {
+    changed = io_value ^ _io_values[mcp];
+  }
   if (changed)
   {
     if (_mcp_output_start > 7)
