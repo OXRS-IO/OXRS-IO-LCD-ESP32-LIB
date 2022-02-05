@@ -49,6 +49,8 @@
 #define     LCD_ON_MS               10000     // How long to turn on the LCD after an event
 #define     LCD_EVENT_MS            3000      // How long to display an event in the bottom line
 #define     RX_TX_LED_ON            300       // How long to turn mqtt rx/tx led on after trgger
+#define     LCD_PORT_FLASH_ON_MS    700       // flash timer security port display
+#define     LCD_PORT_FLASH_OFF_MS   300       // flash timer security port display
 
 // LCD backlight control
 // TFT_BL GPIO pin defined in user_setup.h of tft_eSPI
@@ -104,7 +106,7 @@ class OXRS_LCD
     void draw_ports (int port_layout, uint8_t mcps_found);
 
     void begin (void);
-    void process (int mcp, uint16_t io_value);
+    void process (int mcp, uint16_t io_value, uint32_t new_config = 0L);
     void loop(void);
     
     void trigger_mqtt_rx_led (void);
@@ -132,6 +134,12 @@ class OXRS_LCD
     int       _brightness_on = LCD_BL_ON;
     int       _brightness_dim = LCD_BL_DIM;
 
+    // flash timer
+    uint32_t  _flash_timer_ms = LCD_PORT_FLASH_ON_MS;
+    uint32_t  _last_flash_trigger = 0L;
+    bool      _flash_on = false;
+    uint32_t  _ports_to_flash = 0L;
+    
     EthernetClass * _ethernet;
     WiFiClass *     _wifi;
     int             _ip_state = -1;
@@ -148,6 +156,8 @@ class OXRS_LCD
    // history buffer of io_values to extract changes
     uint16_t _io_values[8];
     uint16_t _io_values_initialised = 0;
+    int      _mcps_found;
+    uint32_t _port_config = 0;
     
     void _clear_event(void);
     
@@ -166,6 +176,7 @@ class OXRS_LCD
     void _update_input(uint8_t type, uint8_t index, int state);
     void _update_output(uint8_t type, uint8_t index, int state);
     void _update_io_48(uint8_t type, uint8_t index, int state);
+    void _update_security(uint8_t type, uint8_t index, int state);
 
     void _set_backlight(int val);
     void _set_ip_link_led(int state);
