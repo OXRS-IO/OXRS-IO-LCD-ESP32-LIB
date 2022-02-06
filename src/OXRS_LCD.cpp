@@ -608,7 +608,7 @@ void OXRS_LCD::loop(void)
       {
         if (_flash_on)
         {
-          _update_security(TYPE_STATE, i*4+1, (_io_values[i/4] >> (i*4 & 0xfc)) & 0x000f ); 
+          _update_security(TYPE_STATE, i*4+1, (_io_values[i/4] >> ((i & 0x03) * 4) & 0x000f ));
         }
         else
         {
