@@ -97,30 +97,25 @@ class OXRS_LCD
     OXRS_LCD(EthernetClass& ethernet, OXRS_MQTT& mqtt);
     OXRS_LCD(WiFiClass& wifi, OXRS_MQTT& mqtt);
     
-    int draw_header(
-      const char * fwShortName, 
-      const char * fwMaker, 
-      const char * fwVersion, 
-      const char * fwPlatform, 
-      const uint8_t * fwLogo = NULL);
-    void draw_ports (int port_layout, uint8_t mcps_found);
+    int draw_header(const char * fwShortName, const char * fwMaker, const char * fwVersion, const char * fwPlatform, const uint8_t * fwLogo = NULL);
+    void draw_ports(int port_layout, uint8_t mcps_found);
 
-    void begin (void);
-    void process (int mcp, uint16_t io_value);
+    void begin(void);
+    void process(uint8_t mcp, uint16_t io_value);
     void loop(void);
 
-    void trigger_mqtt_rx_led (void);
-    void trigger_mqtt_tx_led (void);
+    void trigger_mqtt_rx_led(void);
+    void trigger_mqtt_tx_led(void);
     
-    void show_temp (float temperature, char unit = 'C');
-    void show_event (const char * s_event);
+    void show_temp(float temperature, char unit = 'C');
+    void show_event(const char * s_event);
     
-    void setBrightnessOn (int brightness_on);
-    void setBrightnessDim (int brightness_dim);
-    void setOnTimeDisplay (int ontime_display);
-    void setOnTimeEvent (int ontime_event);
+    void setBrightnessOn(int brightness_on);
+    void setBrightnessDim(int brightness_dim);
+    void setOnTimeDisplay(int ontime_display);
+    void setOnTimeEvent(int ontime_event);
 
-    void setPortConfig (uint8_t port, int config);
+    void setPortConfig(uint8_t mcp, uint8_t pin, int config);
 
   private:  
     // for timeout (clear) of bottom line input event display
@@ -157,7 +152,7 @@ class OXRS_LCD
      
    // history buffer of io_values to extract changes
     uint16_t _io_values[8];
-    uint16_t _io_values_initialised = 0;
+    uint16_t _mcps_initialised = 0;
     int      _mcps_found;
     uint32_t _port_config = 0;
     
@@ -175,6 +170,8 @@ class OXRS_LCD
     void _check_MQTT_state(int state);
     void _show_MQTT_topic(const char * topic);
 
+    void _check_port_flash(void);
+    
     void _update_input(uint8_t type, uint8_t index, int state);
     void _update_output(uint8_t type, uint8_t index, int state);
     void _update_io_48(uint8_t type, uint8_t index, int state);
@@ -192,8 +189,6 @@ class OXRS_LCD
     bool _drawBmp_P(const uint8_t *image, int16_t x, int16_t y, int16_t bmp_w, int16_t bmp_h);
     uint16_t _read16_P(uint8_t** p);
     uint32_t _read32_P(uint8_t** p);   
-
 };
-
 
 #endif

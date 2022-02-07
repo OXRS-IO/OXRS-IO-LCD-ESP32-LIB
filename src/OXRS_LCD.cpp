@@ -53,12 +53,12 @@ void OXRS_LCD::begin()
 // value range: 
 //    0          : ever (no timer)
 //    1 .. 600   : time in seconds (10 minutes max) range can be defined by the UI, not checked here
-void OXRS_LCD::setOnTimeDisplay (int ontime_display)
+void OXRS_LCD::setOnTimeDisplay(int ontime_display)
 {
   _ontime_display_ms = ontime_display * 1000;
 }
 
-void OXRS_LCD::setOnTimeEvent (int ontime_event)
+void OXRS_LCD::setOnTimeEvent(int ontime_event)
 {
   _ontime_event_ms = ontime_event * 1000;
 }
@@ -66,26 +66,30 @@ void OXRS_LCD::setOnTimeEvent (int ontime_event)
 // brightness_on  : brightness when on        (default: 100 %)
 // brightness_dim : brightness when dimmed    (default:  10 %)
 // value range    : 0 .. 100  : brightness in %  range can be defined by the UI, not checked here
-void OXRS_LCD::setBrightnessOn (int brightness_on)
+void OXRS_LCD::setBrightnessOn(int brightness_on)
 {
   _brightness_on = brightness_on;
 }
 
-void OXRS_LCD::setBrightnessDim (int brightness_dim)
+void OXRS_LCD::setBrightnessDim(int brightness_dim)
 {
   _brightness_dim = brightness_dim;
 }
 
-void OXRS_LCD::setPortConfig(uint8_t port, int config)
+void OXRS_LCD::setPortConfig(uint8_t mcp, uint8_t pin, int config)
 {
+  // mcp/port are zero-based, but index is 1-based (to match the firmware config)
+  uint8_t port = (mcp * 4) + (pin / 4);
+  uint8_t index = (mcp * 16) + pin + 1;
+  
   // TODO: config should be an int so we can handle other config types later (i.e. no more bit math)
   if (config)
   {
-    _update_security(TYPE_FRAME, port*4+1, PORT_STATE_OFF);
+    _update_security(TYPE_FRAME, index, PORT_STATE_OFF);
   }
   else
   {
-    _update_input(TYPE_FRAME, port*4+1, PORT_STATE_OFF);
+    _update_input(TYPE_FRAME, index, PORT_STATE_OFF);
     bitWrite(_ports_to_flash, port, 0);
   }
 
@@ -93,7 +97,7 @@ void OXRS_LCD::setPortConfig(uint8_t port, int config)
   bitWrite(_port_config, port, config);
 
   // force content to be updated (reset MCP initialised flag)
-  bitWrite(_io_values_initialised, port / 4, 0);
+  bitWrite(_mcps_initialised, mcp, 0);
 }
 
 int OXRS_LCD::draw_header(const char * fwShortName, const char * fwMaker, const char * fwVersion, const char * fwPlatform, const uint8_t * fwLogo)
@@ -151,9 +155,9 @@ void OXRS_LCD::draw_ports(int port_layout, uint8_t mcps_found)
 { 
   _port_layout = port_layout;
   _mcps_found = mcps_found;
+  _mcps_initialised = 0;
   _mcp_output_pins = 16;
   _mcp_output_start = 8;
-  _io_values_initialised = 0;
  
   // handle input configurations
   if ((_port_layout / 1000) == 1)
@@ -469,7 +473,7 @@ void OXRS_LCD::draw_ports(int port_layout, uint8_t mcps_found)
  * check for changes vs last stored value
  * animate port display if change detected
  */
-void OXRS_LCD::process(int mcp, uint16_t io_value)
+void OXRS_LCD::process(uint8_t mcp, uint16_t io_value)
 {
   int i, index;
   uint16_t changed;
@@ -479,10 +483,10 @@ void OXRS_LCD::process(int mcp, uint16_t io_value)
   if (!bitRead(_mcps_found, mcp)) return;
    
   // check if io_values initialised, if not -> force display update
-  if (!bitRead(_io_values_initialised, mcp))
+  if (!bitRead(_mcps_initialised, mcp))
   {
     changed = 0xffff;
-    bitSet(_io_values_initialised, mcp);
+    bitSet(_mcps_initialised, mcp);
   }
   // Compare with last stored value
   else
@@ -589,32 +593,10 @@ void OXRS_LCD::process(int mcp, uint16_t io_value)
  *  LCD_on timed out
  *  rx and tx led timed out
  *  link status has changed
- * flash timer for security port fault flashing expired
+ *  flash timer for security port fault flashing expired
  */
 void OXRS_LCD::loop(void)
 {
-  // flash timer on / off
-  if ((millis() - _last_flash_trigger) > _flash_timer_ms)
-  {
-    _flash_on = !_flash_on;
-    for (int i=0; i<32; i++)
-    {
-      if (bitRead(_ports_to_flash, i))
-      {
-        if (_flash_on)
-        {
-          _update_security(TYPE_STATE, i*4+1, (_io_values[i/4] >> ((i & 0x03) * 4) & 0x000f ));
-        }
-        else
-        {
-          _update_security(TYPE_FRAME, i*4+1, PORT_STATE_OFF);
-        }
-      }
-    }
-    _flash_timer_ms = (_flash_on) ? LCD_PORT_FLASH_ON_MS : LCD_PORT_FLASH_OFF_MS;
-    _last_flash_trigger = millis();  
-  }
-    
   // Clear event display if timed out
   if (_ontime_event_ms && _last_event_display)
   {
@@ -658,6 +640,9 @@ void OXRS_LCD::loop(void)
   // check if IP or MQTT state has changed
   _check_IP_state(_get_IP_state());
   _check_MQTT_state(_get_MQTT_state());
+
+  // flash timer on / off
+  _check_port_flash();    
 }
 
 /*
@@ -880,6 +865,35 @@ void OXRS_LCD::_show_MQTT_topic(const char * topic)
   strcpy(buffer, "MQTT: ");
   strncat(buffer, topic, sizeof(buffer)-strlen(buffer)-1);
   tft.drawString(buffer, 12, 80);
+}
+
+void OXRS_LCD::_check_port_flash(void)
+{
+  if ((millis() - _last_flash_trigger) > _flash_timer_ms)
+  {
+    _flash_on = !_flash_on;
+
+    for (int port = 0; port < 32; port++)
+    {
+      if (bitRead(_ports_to_flash, port))
+      {
+        uint8_t mcp = port / 4;
+        uint8_t index = port * 4 + 1;
+      
+        if (_flash_on)
+        {
+          _update_security(TYPE_STATE, index, (_io_values[mcp] >> ((port & 0x03) * 4) & 0x000f));
+        }
+        else
+        {
+          _update_security(TYPE_FRAME, index, PORT_STATE_OFF);
+        }
+      }
+    }
+    
+    _flash_timer_ms = (_flash_on) ? LCD_PORT_FLASH_ON_MS : LCD_PORT_FLASH_OFF_MS;
+    _last_flash_trigger = millis();  
+  }  
 }
 
 
