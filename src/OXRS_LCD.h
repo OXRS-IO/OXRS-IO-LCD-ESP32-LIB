@@ -106,9 +106,9 @@ class OXRS_LCD
     void draw_ports (int port_layout, uint8_t mcps_found);
 
     void begin (void);
-    void process (int mcp, uint16_t io_value, uint32_t new_config = 0L);
+    void process (int mcp, uint16_t io_value);
     void loop(void);
-    
+
     void trigger_mqtt_rx_led (void);
     void trigger_mqtt_tx_led (void);
     
@@ -119,6 +119,8 @@ class OXRS_LCD
     void setBrightnessDim (int brightness_dim);
     void setOnTimeDisplay (int ontime_display);
     void setOnTimeEvent (int ontime_event);
+
+    void setPortConfig (uint8_t port, int config);
 
   private:  
     // for timeout (clear) of bottom line input event display

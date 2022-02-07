@@ -76,6 +76,26 @@ void OXRS_LCD::setBrightnessDim (int brightness_dim)
   _brightness_dim = brightness_dim;
 }
 
+void OXRS_LCD::setPortConfig(uint8_t port, int config)
+{
+  // TODO: config should be an int so we can handle other config types later (i.e. no more bit math)
+  if (config)
+  {
+    _update_security(TYPE_FRAME, port*4+1, PORT_STATE_OFF);
+  }
+  else
+  {
+    _update_input(TYPE_FRAME, port*4+1, PORT_STATE_OFF);
+    bitWrite(_ports_to_flash, port, 0);
+  }
+
+  // update our port config global
+  bitWrite(_port_config, port, config);
+
+  // force content to be updated (reset MCP initialised flag)
+  bitWrite(_io_values_initialised, port * 4, 0);
+}
+
 int OXRS_LCD::draw_header(const char * fwShortName, const char * fwMaker, const char * fwVersion, const char * fwPlatform, const uint8_t * fwLogo)
 {
   char buffer[30];
@@ -445,11 +465,11 @@ void OXRS_LCD::draw_ports(int port_layout, uint8_t mcps_found)
 }
 
 /*
- * process io_value and new_config:
+ * process io_value :
  * check for changes vs last stored value
  * animate port display if change detected
  */
-void OXRS_LCD::process(int mcp, uint16_t io_value, uint32_t new_config)
+void OXRS_LCD::process(int mcp, uint16_t io_value)
 {
   int i, index;
   uint16_t changed;
@@ -470,31 +490,6 @@ void OXRS_LCD::process(int mcp, uint16_t io_value, uint32_t new_config)
     changed = io_value ^ _io_values[mcp];
   }
   
-  // check if port_config has changed , update layout accordingly
-  // new_config contains bit coded (1 bit per port) information if SECURITY (=1) or standard (=0)
-  if (new_config != _port_config)
-  {
-    uint32_t p_changed = new_config ^ _port_config;
-    for (i=mcp*4; i<mcp*4+4; i++)
-    {
-      if (bitRead(p_changed, i))
-      {
-        // decide if port is SECURITY or sth else
-        if (bitRead(new_config, i))
-        {
-          _update_security(TYPE_FRAME, i*4+1, PORT_STATE_OFF);
-        }
-        else
-        {
-          _update_input(TYPE_FRAME, i*4+1, PORT_STATE_OFF);
-          bitWrite(_ports_to_flash, i, 0);
-        }
-        bitWrite(_port_config, i, bitRead(new_config,i));
-        // force content to be updated after layout has changed
-        changed = 0xffff;
-      }
-    }
-  }
   // figure out index and pin_count
   if (changed)
   {
