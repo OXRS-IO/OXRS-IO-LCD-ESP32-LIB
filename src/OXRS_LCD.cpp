@@ -93,7 +93,7 @@ void OXRS_LCD::setPortConfig(uint8_t port, int config)
   bitWrite(_port_config, port, config);
 
   // force content to be updated (reset MCP initialised flag)
-  bitWrite(_io_values_initialised, port * 4, 0);
+  bitWrite(_io_values_initialised, port / 4, 0);
 }
 
 int OXRS_LCD::draw_header(const char * fwShortName, const char * fwMaker, const char * fwVersion, const char * fwPlatform, const uint8_t * fwLogo)
@@ -1001,6 +1001,7 @@ void OXRS_LCD::_update_security(uint8_t type, uint8_t index, int state)
     color = (state != PORT_STATE_NA) ? TFT_WHITE : TFT_DARKGREY;
     tft.drawRect(x, y, bw, bh, color);
     tft.fillRect(x+1, y+1, bw-2, bh-2, TFT_BLACK);
+    tft.fillRoundRect(x+2, y+2, bw-4, bh-4, 3, TFT_DARKGREY);
   }
   else
   // draw virtual led in port
