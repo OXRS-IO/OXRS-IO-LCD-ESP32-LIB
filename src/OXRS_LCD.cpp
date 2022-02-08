@@ -81,16 +81,20 @@ void OXRS_LCD::setPortConfig(uint8_t mcp, uint8_t pin, int config)
   // mcp/port are zero-based, but index is 1-based (to match the firmware config)
   uint8_t port = (mcp * 4) + (pin / 4);
   uint8_t index = (mcp * 16) + pin + 1;
+
+  // disable any flashing (might get re-enabled depending on port config)
+  bitWrite(_ports_to_flash, port, false);
   
-  // TODO: config should be an int so we can handle other config types later (i.e. no more bit math)
-  if (config)
+  // handle the config type
+  switch (config)
   {
-    _update_security(TYPE_FRAME, index, PORT_STATE_OFF);
-  }
-  else
-  {
-    _update_input(TYPE_FRAME, index, PORT_STATE_OFF);
-    bitWrite(_ports_to_flash, port, 0);
+    case PORT_CONFIG_SECURITY:
+      _update_security(TYPE_FRAME, index, PORT_STATE_OFF);
+      break;
+      
+    default:
+      _update_input(TYPE_FRAME, index, PORT_STATE_OFF);
+      break;
   }
 
   // update our port config global
@@ -988,7 +992,7 @@ void OXRS_LCD::_update_security(uint8_t type, uint8_t index, int state)
   int y =   _layout_config.y;
   int port;
   uint16_t color;
-  bool  flash;
+  bool flash;
 
   if (index > _layout_config.index_max) return;
 
