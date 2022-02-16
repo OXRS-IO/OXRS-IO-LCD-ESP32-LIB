@@ -6,7 +6,6 @@
 #include "Arduino.h"
 #include "OXRS_LCD.h"
 
-#include <TFT_eSPI.h>               // Hardware-specific library
 #include "OXRS_logo.h"              // default logo bitmap (24-bit-bitmap)
 #include "Free_Fonts.h"             // GFX Free Fonts supplied with TFT_eSPI
 #include "roboto_fonts.h"           // roboto_fonts Created by http://oleddisplay.squix.ch/
@@ -102,6 +101,31 @@ void OXRS_LCD::setPortConfig(uint8_t mcp, uint8_t pin, int config)
 
   // force content to be updated (reset MCP initialised flag)
   bitWrite(_mcps_initialised, mcp, 0);
+}
+
+// set info display row positions (0 hides specific member)
+void OXRS_LCD::setIPpos(int yPos)
+{
+  _yIP = yPos;
+}
+
+void OXRS_LCD::setMACpos(int yPos)
+{
+  _yMAC = yPos;
+}
+
+void OXRS_LCD::setMQTTpos(int yPos)
+{
+  _yMQTT = yPos;
+}
+void OXRS_LCD::setTEMPpos(int yPos)
+{
+  _yTEMP = yPos;
+}
+
+TFT_eSPI* OXRS_LCD::getTft()
+{
+  return &tft;
 }
 
 int OXRS_LCD::draw_header(const char * fwShortName, const char * fwMaker, const char * fwVersion, const char * fwPlatform, const uint8_t * fwLogo)
@@ -668,12 +692,14 @@ void OXRS_LCD::show_temp(float temperature, char unit)
 {
   char buffer[30];
   
-  tft.fillRect(0, 95, 240, 13,  TFT_BLACK);
+  if (_yTEMP == 0) return;
+ 
+  tft.fillRect(0, _yTEMP, 240, 13,  TFT_BLACK);
   tft.setTextColor(TFT_WHITE);
   tft.setTextDatum(TL_DATUM);
   tft.setFreeFont(&Roboto_Mono_Thin_13);
   sprintf(buffer, "TEMP: %2.1f %c", temperature, unit);
-  tft.drawString(buffer, 12, 95);
+  tft.drawString(buffer, 12, _yTEMP);
 }
 
 /*
@@ -776,8 +802,10 @@ void OXRS_LCD::_check_IP_state(int state)
 
 void OXRS_LCD::_show_IP(IPAddress ip)
 {
+  if (_yIP == 0) return;
+
   // clear anything already displayed
-  tft.fillRect(0, 50, 240, 13, TFT_BLACK);
+  tft.fillRect(0, _yIP, 240, 15, TFT_BLACK);
 
   tft.setTextColor(TFT_WHITE);
   tft.setTextDatum(TL_DATUM);
@@ -792,22 +820,24 @@ void OXRS_LCD::_show_IP(IPAddress ip)
   {
     sprintf(buffer, "  IP: %03d.%03d.%03d.%03d", ip[0], ip[1], ip[2], ip[3]);
   }
-  tft.drawString(buffer, 12, 50);
+  tft.drawString(buffer, 12, _yIP);
   
   if (_wifi)
   {
-    tft.drawBitmap(13, 51, icon_wifi, 11, 10, TFT_BLACK, TFT_WHITE);
+    tft.drawBitmap(13, _yIP+1, icon_wifi, 11, 10, TFT_BLACK, TFT_WHITE);
   }
   if (_ethernet)
   {
-    tft.drawBitmap(13, 51, icon_ethernet, 11, 10, TFT_BLACK, TFT_WHITE);
+    tft.drawBitmap(13, _yIP+1, icon_ethernet, 11, 10, TFT_BLACK, TFT_WHITE);
   }
 }
 
 void OXRS_LCD::_show_MAC(byte mac[])
 {  
+  if (_yMAC == 0) return;
+  
   // clear anything already displayed
-  tft.fillRect(0, 65, 240, 13, TFT_BLACK);
+  tft.fillRect(0, _yMAC, 240, 13, TFT_BLACK);
 
   tft.setTextColor(TFT_WHITE);
   tft.setTextDatum(TL_DATUM);
@@ -815,7 +845,7 @@ void OXRS_LCD::_show_MAC(byte mac[])
 
   char buffer[30];
   sprintf(buffer, " MAC: %02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-  tft.drawString(buffer, 12, 65);
+  tft.drawString(buffer, 12, _yMAC);
 }
 
 int OXRS_LCD::_get_MQTT_state(void)
@@ -858,8 +888,10 @@ void OXRS_LCD::_check_MQTT_state(int state)
 
 void OXRS_LCD::_show_MQTT_topic(const char * topic)
 {
+  if (_yMQTT == 0) return;
+
   // clear anything already displayed
-  tft.fillRect(0, 80, 240, 13, TFT_BLACK);
+  tft.fillRect(0, _yMQTT, 240, 13, TFT_BLACK);
 
   tft.setTextColor(TFT_WHITE);
   tft.setTextDatum(TL_DATUM);
@@ -868,7 +900,7 @@ void OXRS_LCD::_show_MQTT_topic(const char * topic)
   char buffer[30];
   strcpy(buffer, "MQTT: ");
   strncat(buffer, topic, sizeof(buffer)-strlen(buffer)-1);
-  tft.drawString(buffer, 12, 80);
+  tft.drawString(buffer, 12, _yMQTT);
 }
 
 void OXRS_LCD::_check_port_flash(void)
@@ -1207,21 +1239,21 @@ void OXRS_LCD::_set_ip_link_led(int state)
 {
   // UP, DOWN, UNKNOWN
   uint16_t color[3] = {TFT_GREEN, TFT_RED, TFT_BLACK};
-  if (state < 3) tft.fillRoundRect(2, 54, 8, 5, 2, color[state]);
+  if (state < 3) tft.fillRoundRect(2, _yIP+4, 8, 5, 2, color[state]);
 }
 
 void OXRS_LCD::_set_mqtt_rx_led(int state)
 {
   // UP, ACTIVE, DOWN, UNKNOWN
   uint16_t color[4] = {TFT_GREEN, TFT_YELLOW, TFT_RED, TFT_BLACK};  
-  if (state < 4) tft.fillRoundRect(2, 80, 8, 5, 2, color[state]);
+  if (state < 4) tft.fillRoundRect(2, _yMQTT, 8, 5, 2, color[state]);
 }
 
 void OXRS_LCD::_set_mqtt_tx_led(int state)
 {
   // UP, ACTIVE, DOWN, UNKNOWN
   uint16_t color[4] = {TFT_GREEN, TFT_ORANGE, TFT_RED, TFT_BLACK};
-  if (state < 4) tft.fillRoundRect(2, 88, 8, 5, 2, color[state]);
+  if (state < 4) tft.fillRoundRect(2, _yMQTT+8, 8, 5, 2, color[state]);
 }
 
 /*
