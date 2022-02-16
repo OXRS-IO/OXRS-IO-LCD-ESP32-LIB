@@ -6,6 +6,7 @@
 #ifndef OXRS_LCD_H
 #define OXRS_LCD_H
 
+#include <TFT_eSPI.h>               // Hardware-specific library
 #include <OXRS_MQTT.h>
 #include <Ethernet.h>
 
@@ -42,6 +43,9 @@
 #define     PORT_LAYOUT_IO_32_96_8      4802
 #define     PORT_LAYOUT_IO_64_64_8      4804
 #define     PORT_LAYOUT_IO_96_32_8      4806
+
+// row start of info section
+#define     Y_INFO                      50
 
 // port config constants
 #define     PORT_CONFIG_DEFAULT         0
@@ -119,6 +123,14 @@ class OXRS_LCD
     void setOnTimeEvent(int ontime_event);
 
     void setPortConfig(uint8_t mcp, uint8_t pin, int config);
+    
+    void setIPpos(int yPos);
+    void setMACpos(int yPos);
+    void setMQTTpos(int yPos);
+    void setTEMPpos(int yPos);
+    
+    TFT_eSPI* getTft(void);
+
 
   private:  
     // for timeout (clear) of bottom line input event display
@@ -139,6 +151,14 @@ class OXRS_LCD
     uint32_t  _last_flash_trigger = 0L;
     bool      _flash_on = false;
     uint32_t  _ports_to_flash = 0L;
+    
+    // Y position (row) for info display members
+    // 0 hides display
+    int       _yIP    = Y_INFO;
+    int       _yMAC   = Y_INFO + 15;
+    int       _yMQTT  = Y_INFO + 30;
+    int       _yTEMP  = Y_INFO + 45;
+    
     
     EthernetClass * _ethernet;
     WiFiClass *     _wifi;
