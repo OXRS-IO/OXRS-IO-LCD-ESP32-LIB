@@ -27,6 +27,12 @@ setOnTimeDisplay             KEYWORD2
 setOnTimeEvent               KEYWORD2
 setPortConfig                KEYWORD2
 
+setIPpos                     KEYWORD2
+setMACpos                    KEYWORD2
+setMQTTpos                   KEYWORD2
+setTEMPpos                   KEYWORD2
+getTft                       KEYWORD2
+
 #######################################
 # Constants (LITERAL1)
 #######################################
