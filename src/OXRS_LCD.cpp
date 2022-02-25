@@ -128,7 +128,7 @@ TFT_eSPI* OXRS_LCD::getTft()
   return &tft;
 }
 
-int OXRS_LCD::draw_header(const char * fwShortName, const char * fwMaker, const char * fwVersion, const char * fwPlatform, const uint8_t * fwLogo)
+int OXRS_LCD::drawHeader(const char * fwShortName, const char * fwMaker, const char * fwVersion, const char * fwPlatform, const uint8_t * fwLogo)
 {
   char buffer[30];
   int return_code;
@@ -179,7 +179,7 @@ int OXRS_LCD::draw_header(const char * fwShortName, const char * fwMaker, const 
  * draw ports according to PORT_LAYOUT_... on screen 
  * show i/o's as inactive
 */
-void OXRS_LCD::draw_ports(int port_layout, uint8_t mcps_found)
+void OXRS_LCD::drawPorts(int port_layout, uint8_t mcps_found)
 { 
   _port_layout = port_layout;
   _mcps_found = mcps_found;
@@ -676,24 +676,24 @@ void OXRS_LCD::loop(void)
 /*
  * control mqtt rx/tx virtual leds 
  */
-void OXRS_LCD::trigger_mqtt_rx_led(void)
+void OXRS_LCD::triggerMqttRxLed(void)
 {
   _set_mqtt_rx_led(MQTT_STATE_ACTIVE);
   _last_rx_trigger = millis(); 
 }
 
-void OXRS_LCD::trigger_mqtt_tx_led(void)
+void OXRS_LCD::triggerMqttTxLed(void)
 {
   _set_mqtt_tx_led(MQTT_STATE_ACTIVE);
   _last_tx_trigger = millis(); 
 }
 
-void OXRS_LCD::hide_temp(void)
+void OXRS_LCD::hideTemp(void)
 {
-  show_temp(NAN);
+  showTemp(NAN);
 }
 
-void OXRS_LCD::show_temp(float temperature, char unit)
+void OXRS_LCD::showTemp(float temperature, char unit)
 {
   char buffer[30];
   
@@ -713,7 +713,7 @@ void OXRS_LCD::show_temp(float temperature, char unit)
 /*
  * draw event on bottom line of screen
  */
-void OXRS_LCD::show_event(const char * s_event)
+void OXRS_LCD::showEvent(const char * s_event)
 {
   // Show last input event on bottom line
   tft.fillRect(0, 225, 240, 15,  TFT_WHITE);
