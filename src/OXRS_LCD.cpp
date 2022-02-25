@@ -688,6 +688,11 @@ void OXRS_LCD::trigger_mqtt_tx_led(void)
   _last_tx_trigger = millis(); 
 }
 
+void OXRS_LCD::hide_temp(void)
+{
+  show_temp(NAN);
+}
+
 void OXRS_LCD::show_temp(float temperature, char unit)
 {
   char buffer[30];
@@ -695,11 +700,14 @@ void OXRS_LCD::show_temp(float temperature, char unit)
   if (_yTEMP == 0) return;
  
   tft.fillRect(0, _yTEMP, 240, 13,  TFT_BLACK);
-  tft.setTextColor(TFT_WHITE);
-  tft.setTextDatum(TL_DATUM);
-  tft.setFreeFont(&Roboto_Mono_Thin_13);
-  sprintf(buffer, "TEMP: %2.1f %c", temperature, unit);
-  tft.drawString(buffer, 12, _yTEMP);
+  if (!isnan(temperature))
+  {
+    tft.setTextColor(TFT_WHITE);
+    tft.setTextDatum(TL_DATUM);
+    tft.setFreeFont(&Roboto_Mono_Thin_13);
+    sprintf(buffer, "TEMP: %2.1f %c", temperature, unit);
+    tft.drawString(buffer, 12, _yTEMP);
+  }
 }
 
 /*

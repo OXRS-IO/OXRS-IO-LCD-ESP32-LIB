@@ -114,6 +114,7 @@ class OXRS_LCD
     void trigger_mqtt_rx_led(void);
     void trigger_mqtt_tx_led(void);
     
+    void hide_temp(void);
     void show_temp(float temperature, char unit = 'C');
     void show_event(const char * s_event);
     
