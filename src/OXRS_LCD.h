@@ -104,19 +104,19 @@ class OXRS_LCD
     OXRS_LCD(EthernetClass& ethernet, OXRS_MQTT& mqtt);
     OXRS_LCD(WiFiClass& wifi, OXRS_MQTT& mqtt);
     
-    int draw_header(const char * fwShortName, const char * fwMaker, const char * fwVersion, const char * fwPlatform, const uint8_t * fwLogo = NULL);
-    void draw_ports(int port_layout, uint8_t mcps_found);
+    int drawHeader(const char * fwShortName, const char * fwMaker, const char * fwVersion, const char * fwPlatform, const uint8_t * fwLogo = NULL);
+    void drawPorts(int port_layout, uint8_t mcps_found);
 
     void begin(void);
     void process(uint8_t mcp, uint16_t io_value);
     void loop(void);
 
-    void trigger_mqtt_rx_led(void);
-    void trigger_mqtt_tx_led(void);
+    void triggerMqttRxLed(void);
+    void triggerMqttTxLed(void);
     
-    void hide_temp(void);
-    void show_temp(float temperature, char unit = 'C');
-    void show_event(const char * s_event);
+    void hideTemp(void);
+    void showTemp(float temperature, char unit = 'C');
+    void showEvent(const char * s_event);
     
     void setBrightnessOn(int brightness_on);
     void setBrightnessDim(int brightness_dim);
