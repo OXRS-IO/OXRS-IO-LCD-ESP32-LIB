@@ -188,7 +188,7 @@ void OXRS_LCD::drawPorts(int port_layout, uint8_t mcps_found)
   _mcp_output_start = 8;
  
   // handle input configurations
-  if ((_port_layout / 1000) == 1)
+  if (_getPortLayoutGroup(_port_layout) == PORT_LAYOUT_GROUP_INPUT)
   {
     // autodetect layout from mcps_found
     if (_port_layout == PORT_LAYOUT_INPUT_AUTO)
@@ -252,7 +252,7 @@ void OXRS_LCD::drawPorts(int port_layout, uint8_t mcps_found)
   
   // handle output configurations
   int frame_h;
-  if ((_port_layout / 1000) == 2)
+  if (_getPortLayoutGroup(_port_layout) == PORT_LAYOUT_GROUP_OUTPUT)
   {
     // autodetect layout from mcps_found
     if (_port_layout == PORT_LAYOUT_OUTPUT_AUTO)
@@ -355,7 +355,7 @@ void OXRS_LCD::drawPorts(int port_layout, uint8_t mcps_found)
   }
 
   // handle hybrid configurations
-  if ((_port_layout / 1000) == 4)
+  if (_getPortLayoutGroup(_port_layout) == PORT_LAYOUT_GROUP_HYBRID)
   {
     // check for 8/16 MCP
     if ((_port_layout % 1000) >= 800)
@@ -599,7 +599,14 @@ void OXRS_LCD::process(uint8_t mcp, uint16_t io_value)
             if ((index+i+1) <= _layout_config_in.index_max)
             {
               _layout_config = _layout_config_in;
-              _update_input(TYPE_STATE, index+i+1, bitRead(io_value, i) ? PORT_STATE_OFF : PORT_STATE_ON); 
+              if (bitRead(_port_config, (index+i)/4))
+              {
+                _update_security(TYPE_STATE, index+i+1, (io_value >> (i & 0xfc)) & 0x000f ); 
+              }
+              else
+              {
+                _update_input(TYPE_STATE, index+i+1, bitRead(io_value, i) ? PORT_STATE_OFF : PORT_STATE_ON); 
+              }
             }
             else
             {
@@ -916,6 +923,11 @@ void OXRS_LCD::_check_port_flash(void)
   if ((millis() - _last_flash_trigger) > _flash_timer_ms)
   {
     _flash_on = !_flash_on;
+    // handle hybrid configurations
+    if (_getPortLayoutGroup(_port_layout) == PORT_LAYOUT_GROUP_HYBRID)
+    {
+      _layout_config = _layout_config_in;
+    }
 
     for (int port = 0; port < 32; port++)
     {
@@ -940,6 +952,19 @@ void OXRS_LCD::_check_port_flash(void)
   }  
 }
 
+// return the actual layout group from port_layout
+int OXRS_LCD::_getPortLayoutGroup(int port_layout)
+{
+  int group = 0;
+  switch (port_layout / 1000)
+  {
+    case 1: group = PORT_LAYOUT_GROUP_INPUT; break;
+    case 2: group = PORT_LAYOUT_GROUP_OUTPUT; break;
+    case 3: group = PORT_LAYOUT_GROUP_SMOKE; break;
+    case 4: group = PORT_LAYOUT_GROUP_HYBRID; break;
+  }
+  return group;
+}
 
 /**
   animation of input state in ports view
