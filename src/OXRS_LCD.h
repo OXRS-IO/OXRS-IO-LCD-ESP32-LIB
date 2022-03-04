@@ -44,6 +44,12 @@
 #define     PORT_LAYOUT_IO_64_64_8      4804
 #define     PORT_LAYOUT_IO_96_32_8      4806
 
+// port layout groups
+#define     PORT_LAYOUT_GROUP_INPUT     1
+#define     PORT_LAYOUT_GROUP_OUTPUT    2
+#define     PORT_LAYOUT_GROUP_SMOKE     3
+#define     PORT_LAYOUT_GROUP_HYBRID    4
+
 // row start of info section
 #define     Y_INFO                      50
 
@@ -185,17 +191,18 @@ class OXRS_LCD
     byte * _get_MAC_address(byte * mac);
     IPAddress _get_IP_address(void);
 
-    int _get_IP_state(void);    
+    int  _get_IP_state(void);    
     void _check_IP_state(int state);
     void _show_IP(IPAddress ip);
     void _show_MAC(byte mac[]);
 
-    int _get_MQTT_state(void);
+    int  _get_MQTT_state(void);
     void _check_MQTT_state(int state);
     void _show_MQTT_topic(const char * topic);
 
     void _check_port_flash(void);
-    
+    int  _getPortLayoutGroup(int port_layout);
+
     void _update_input(uint8_t type, uint8_t index, int state);
     void _update_output(uint8_t type, uint8_t index, int state);
     void _update_io_48(uint8_t type, uint8_t index, int state);
