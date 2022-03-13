@@ -129,7 +129,8 @@ class OXRS_LCD
     void setOnTimeDisplay(int ontime_display);
     void setOnTimeEvent(int ontime_event);
 
-    void setPortConfig(uint8_t mcp, uint8_t pin, int config);
+    void setPortType(uint8_t mcp, uint8_t pin, int type);
+    void setPortInvert(uint8_t mcp, uint8_t pin, int invert);
     
     void setIPpos(int yPos);
     void setMACpos(int yPos);
@@ -182,9 +183,12 @@ class OXRS_LCD
      
    // history buffer of io_values to extract changes
     uint16_t _io_values[8];
+    
     uint16_t _mcps_initialised = 0;
     int      _mcps_found;
-    uint32_t _port_config = 0;
+
+    uint32_t _port_type = 0;
+    uint32_t _port_invert = 0;
     
     void _clear_event(void);
     

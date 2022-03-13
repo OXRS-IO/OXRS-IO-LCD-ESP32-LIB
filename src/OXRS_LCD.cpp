@@ -75,7 +75,7 @@ void OXRS_LCD::setBrightnessDim(int brightness_dim)
   _brightness_dim = brightness_dim;
 }
 
-void OXRS_LCD::setPortConfig(uint8_t mcp, uint8_t pin, int config)
+void OXRS_LCD::setPortType(uint8_t mcp, uint8_t pin, int type)
 {
   // mcp/port are zero-based, but index is 1-based (to match the firmware config)
   uint8_t port = (mcp * 4) + (pin / 4);
@@ -85,7 +85,7 @@ void OXRS_LCD::setPortConfig(uint8_t mcp, uint8_t pin, int config)
   bitWrite(_ports_to_flash, port, false);
   
   // handle the config type
-  switch (config)
+  switch (type)
   {
     case PORT_CONFIG_SECURITY:
       _update_security(TYPE_FRAME, index, PORT_STATE_OFF);
@@ -96,8 +96,20 @@ void OXRS_LCD::setPortConfig(uint8_t mcp, uint8_t pin, int config)
       break;
   }
 
-  // update our port config global
-  bitWrite(_port_config, port, config);
+  // update our port type global
+  bitWrite(_port_type, port, type);
+
+  // force content to be updated (reset MCP initialised flag)
+  bitWrite(_mcps_initialised, mcp, 0);
+}
+
+void OXRS_LCD::setPortInvert(uint8_t mcp, uint8_t pin, int invert)
+{
+  // mcp/port are zero-based, but index is 1-based (to match the firmware config)
+  uint8_t port = (mcp * 4) + (pin / 4);
+
+  // update our port invert global
+  bitWrite(_port_invert, port, invert);
 
   // force content to be updated (reset MCP initialised flag)
   bitWrite(_mcps_initialised, mcp, 0);
@@ -560,7 +572,7 @@ void OXRS_LCD::process(uint8_t mcp, uint16_t io_value)
           case PORT_LAYOUT_INPUT_64:
           case PORT_LAYOUT_INPUT_96:
           case PORT_LAYOUT_INPUT_128:
-            if (bitRead(_port_config, (index+i)/4))
+            if (bitRead(_port_type, (index+i)/4))
             {
               _update_security(TYPE_STATE, index+i+1, (io_value >> (i & 0xfc)) & 0x000f ); 
             }
