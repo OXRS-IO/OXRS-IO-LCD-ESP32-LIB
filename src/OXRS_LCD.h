@@ -129,8 +129,8 @@ class OXRS_LCD
     void setOnTimeDisplay(int ontime_display);
     void setOnTimeEvent(int ontime_event);
 
-    void setPortType(uint8_t mcp, uint8_t pin, int type);
-    void setPortInvert(uint8_t mcp, uint8_t pin, int invert);
+    void setPortType(uint8_t port, int type);
+    void setPortInvert(uint8_t port, int invert);
     
     void setIPpos(int yPos);
     void setMACpos(int yPos);

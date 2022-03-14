@@ -75,12 +75,8 @@ void OXRS_LCD::setBrightnessDim(int brightness_dim)
   _brightness_dim = brightness_dim;
 }
 
-void OXRS_LCD::setPortType(uint8_t mcp, uint8_t pin, int type)
+void OXRS_LCD::setPortType(uint8_t port, int type)
 {
-  // mcp/port are zero-based, but index is 1-based (to match the firmware config)
-  uint8_t port = (mcp * 4) + (pin / 4);
-  uint8_t index = (mcp * 16) + pin + 1;
-
   // disable any flashing (might get re-enabled depending on port config)
   bitWrite(_ports_to_flash, port, false);
   
@@ -88,31 +84,32 @@ void OXRS_LCD::setPortType(uint8_t mcp, uint8_t pin, int type)
   switch (type)
   {
     case PORT_TYPE_SECURITY:
-      _update_security(TYPE_FRAME, index, PORT_STATE_OFF);
+      _update_security(TYPE_FRAME, port, PORT_STATE_OFF);
       break;
       
     default:
-      _update_input(TYPE_FRAME, index, PORT_STATE_OFF);
+      // update each of the 4x pins on this port (mcp/port are zero-base, index is 1-based)
+      for (int i = 0; i < 4; i++)
+      {
+        _update_input(TYPE_FRAME, (port * 4) + i + 1, PORT_STATE_OFF);
+      }
       break;
   }
-
+  
   // update our port type global
   bitWrite(_port_type, port, type);
 
   // force content to be updated (reset MCP initialised flag)
-  bitWrite(_mcps_initialised, mcp, 0);
+  bitWrite(_mcps_initialised, port / 4, 0);
 }
 
-void OXRS_LCD::setPortInvert(uint8_t mcp, uint8_t pin, int invert)
+void OXRS_LCD::setPortInvert(uint8_t port, int invert)
 {
-  // mcp/port are zero-based, but index is 1-based (to match the firmware config)
-  uint8_t port = (mcp * 4) + (pin / 4);
-
   // update our port invert global
   bitWrite(_port_invert, port, invert);
 
   // force content to be updated (reset MCP initialised flag)
-  bitWrite(_mcps_initialised, mcp, 0);
+  bitWrite(_mcps_initialised, port / 4, 0);
 }
 
 // set info display row positions (0 hides specific member)
@@ -584,7 +581,7 @@ void OXRS_LCD::process(uint8_t mcp, uint16_t io_value)
         case PORT_LAYOUT_INPUT_128:
           if (port_type == PORT_TYPE_SECURITY)
           {
-            _update_security(TYPE_STATE, index+i+1, (io_value >> (i & 0xfc)) & 0x000f ); 
+            _update_security(TYPE_STATE, port, (io_value >> (i & 0xfc)) & 0x000f ); 
           }
           else
           {
@@ -623,7 +620,7 @@ void OXRS_LCD::process(uint8_t mcp, uint16_t io_value)
             _layout_config = _layout_config_in;
             if (port_type == PORT_TYPE_SECURITY)
             {
-              _update_security(TYPE_STATE, index+i+1, (io_value >> (i & 0xfc)) & 0x000f ); 
+              _update_security(TYPE_STATE, port, (io_value >> (i & 0xfc)) & 0x000f ); 
             }
             else
             {
@@ -955,16 +952,13 @@ void OXRS_LCD::_check_port_flash(void)
     {
       if (bitRead(_ports_to_flash, port))
       {
-        uint8_t mcp = port / 4;
-        uint8_t index = port * 4 + 1;
-      
         if (_flash_on)
         {
-          _update_security(TYPE_STATE, index, (_io_values[mcp] >> ((port & 0x03) * 4) & 0x000f));
+          _update_security(TYPE_STATE, port, (_io_values[port / 4] >> ((port & 0x03) * 4) & 0x000f));
         }
         else
         {
-          _update_security(TYPE_FRAME, index, PORT_STATE_OFF);
+          _update_security(TYPE_FRAME, port, PORT_STATE_OFF);
         }
       }
     }
@@ -1014,6 +1008,7 @@ void OXRS_LCD::_update_input(uint8_t type, uint8_t index, int state)
   
   index -= 1;
   port = index / 4;
+  
   y = y + (port % 2) * bh;
   if (    _port_layout == PORT_LAYOUT_INPUT_96 
       ||  _port_layout == PORT_LAYOUT_IO_96_32 
@@ -1068,7 +1063,7 @@ void OXRS_LCD::_update_input(uint8_t type, uint8_t index, int state)
   // SHORT      OFF   OFF   ON    OFF   =>  DEBOUNCE_HIGH   SHORT_EVENT         B00001101   MAGENTA
   //                                                        FAULT_EVENT         all other   CYAN
 **/
-void OXRS_LCD::_update_security(uint8_t type, uint8_t index, int state)
+void OXRS_LCD::_update_security(uint8_t type, uint8_t port, int state)
 {
   // NORMAL, ALARM, TAMPER or SHORT, NC, FAULT
   uint16_t color_map[4] = {TFT_GREEN, TFT_RED, TFT_MAGENTA, TFT_CYAN};
@@ -1077,18 +1072,10 @@ void OXRS_LCD::_update_security(uint8_t type, uint8_t index, int state)
   int xo =  _layout_config.xo;
   int x =   _layout_config.x;
   int y =   _layout_config.y;
-  int port;
-  int invert;
   uint16_t color;
-  bool flash;
 
-  if (index > _layout_config.index_max) return;
-
-  index -= 1;
-  port = index / 4;
-  
-  // we only invert the NORMAL/ALARM states, not the alert states
-  invert = bitRead(_port_invert, port);
+  // calculate the max (1-based) index for this port and check 
+  if (((port * 4) + 4) > _layout_config.index_max) return;
   
   y = y + (port % 2) * bh;
   if (    _port_layout == PORT_LAYOUT_INPUT_96 
@@ -1110,12 +1097,17 @@ void OXRS_LCD::_update_security(uint8_t type, uint8_t index, int state)
   {
     color = (state != PORT_STATE_NA) ? TFT_WHITE : TFT_DARKGREY;
     tft.drawRect(x, y, bw, bh, color);
+
     tft.fillRect(x+1, y+1, bw-2, bh-2, TFT_BLACK);
     tft.fillRoundRect(x+2, y+2, bw-4, bh-4, 3, TFT_DARKGREY);
   }
   else
   // draw virtual led in port
   {
+    // NOTE: we only invert the NORMAL/ALARM states, not the alert states
+    int invert = bitRead(_port_invert, port);
+    bool flash;
+  
     switch (state)
     {
       case (B00000101):
@@ -1135,8 +1127,10 @@ void OXRS_LCD::_update_security(uint8_t type, uint8_t index, int state)
         color = color_map[3]; 
         flash = true;
     }
+
     if (state == 0xff) color = TFT_DARKGREY;
     tft.fillRoundRect(x+2, y+2, bw-4, bh-4, 3, color);
+
     bitWrite(_ports_to_flash, port, flash);
   }     
 }
