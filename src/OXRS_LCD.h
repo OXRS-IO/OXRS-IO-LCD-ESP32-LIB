@@ -54,8 +54,8 @@
 #define     Y_INFO                      50
 
 // port config constants
-#define     PORT_CONFIG_DEFAULT         0
-#define     PORT_CONFIG_SECURITY        1
+#define     PORT_TYPE_DEFAULT           0
+#define     PORT_TYPE_SECURITY          1
 
 #define     LCD_BL_ON                   100       // LCD backlight in % when ON, i.e. after an event
 #define     LCD_BL_DIM                  10        // LCD backlight in % when DIMMED (0 == OFF), i.e. after LCD_ON_MS expires

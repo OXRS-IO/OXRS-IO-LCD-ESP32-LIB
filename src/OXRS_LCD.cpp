@@ -87,7 +87,7 @@ void OXRS_LCD::setPortType(uint8_t mcp, uint8_t pin, int type)
   // handle the config type
   switch (type)
   {
-    case PORT_CONFIG_SECURITY:
+    case PORT_TYPE_SECURITY:
       _update_security(TYPE_FRAME, index, PORT_STATE_OFF);
       break;
       
@@ -558,77 +558,87 @@ void OXRS_LCD::process(uint8_t mcp, uint16_t io_value)
          pin_count = _mcp_output_pins;
       }
     }
-    // walk thrue all inputs, call _update_... if change detected
+
+    // walk thru all inputs, call _update_... if change detected
     for (i = 0; i < pin_count; i++)
     {
-      if (bitRead(changed, i))
+      // skip if nothing has changed
+      if (!bitRead(changed, i)) continue;
+
+      // get the port configuration
+      int port = (index + i) / 4;
+      int port_type = bitRead(_port_type, port);
+      int port_invert = bitRead(_port_invert, port);
+      
+      // read the pin value (inverting if required)
+      int pin_value = bitRead(io_value, i) ^ port_invert;
+
+      _set_backlight(_brightness_on);
+      _last_lcd_trigger = millis();
+      switch (_port_layout) 
       {
-        _set_backlight(_brightness_on);
-        _last_lcd_trigger = millis();
-        switch (_port_layout) 
-        {
-          // input ports
-          case PORT_LAYOUT_INPUT_32:
-          case PORT_LAYOUT_INPUT_64:
-          case PORT_LAYOUT_INPUT_96:
-          case PORT_LAYOUT_INPUT_128:
-            if (bitRead(_port_type, (index+i)/4))
+        // input ports
+        case PORT_LAYOUT_INPUT_32:
+        case PORT_LAYOUT_INPUT_64:
+        case PORT_LAYOUT_INPUT_96:
+        case PORT_LAYOUT_INPUT_128:
+          if (port_type == PORT_TYPE_SECURITY)
+          {
+            _update_security(TYPE_STATE, index+i+1, (io_value >> (i & 0xfc)) & 0x000f ); 
+          }
+          else
+          {
+            _update_input(TYPE_STATE, index+i+1, pin_value ? PORT_STATE_OFF : PORT_STATE_ON); 
+          }
+          break;
+        // outport ports
+        case PORT_LAYOUT_OUTPUT_32:
+        case PORT_LAYOUT_OUTPUT_64:
+        case PORT_LAYOUT_OUTPUT_96:
+        case PORT_LAYOUT_OUTPUT_128:
+        case PORT_LAYOUT_OUTPUT_32_8:
+        case PORT_LAYOUT_OUTPUT_64_8:
+          _update_output(TYPE_STATE, index+i+1, pin_value ? PORT_STATE_ON : PORT_STATE_OFF); 
+          break;
+        // input and output ports mixed
+        case PORT_LAYOUT_IO_48:
+          if (index < 16)
+          {
+            _update_io_48(TYPE_STATE, index+i+1, pin_value ? PORT_STATE_OFF : PORT_STATE_ON);
+          } 
+          else
+          {
+            _update_io_48(TYPE_STATE, index+i+1, pin_value ? PORT_STATE_ON : PORT_STATE_OFF);
+          }
+          break;
+        // hybrid ports
+        case PORT_LAYOUT_IO_32_96:
+        case PORT_LAYOUT_IO_64_64:
+        case PORT_LAYOUT_IO_96_32:
+        case PORT_LAYOUT_IO_32_96_8:
+        case PORT_LAYOUT_IO_64_64_8:
+        case PORT_LAYOUT_IO_96_32_8:
+          if ((index+i+1) <= _layout_config_in.index_max)
+          {
+            _layout_config = _layout_config_in;
+            if (port_type == PORT_TYPE_SECURITY)
             {
               _update_security(TYPE_STATE, index+i+1, (io_value >> (i & 0xfc)) & 0x000f ); 
             }
             else
             {
-              _update_input(TYPE_STATE, index+i+1, bitRead(io_value, i) ? PORT_STATE_OFF : PORT_STATE_ON); 
+              _update_input(TYPE_STATE, index+i+1, pin_value ? PORT_STATE_OFF : PORT_STATE_ON); 
             }
-            break;
-          // outport ports
-          case PORT_LAYOUT_OUTPUT_32:
-          case PORT_LAYOUT_OUTPUT_64:
-          case PORT_LAYOUT_OUTPUT_96:
-          case PORT_LAYOUT_OUTPUT_128:
-          case PORT_LAYOUT_OUTPUT_32_8:
-          case PORT_LAYOUT_OUTPUT_64_8:
-            _update_output(TYPE_STATE, index+i+1, bitRead(io_value, i) ? PORT_STATE_ON : PORT_STATE_OFF); 
-            break;
-          // input and output ports mixed
-          case PORT_LAYOUT_IO_48:
-            if (index < 16)
-            {
-              _update_io_48(TYPE_STATE, index+i+1, bitRead(io_value, i) ? PORT_STATE_OFF : PORT_STATE_ON);
-            } 
-            else
-            {
-              _update_io_48(TYPE_STATE, index+i+1, bitRead(io_value, i) ? PORT_STATE_ON : PORT_STATE_OFF);
-            }
-            break;
-          // hybrid ports
-          case PORT_LAYOUT_IO_32_96:
-          case PORT_LAYOUT_IO_64_64:
-          case PORT_LAYOUT_IO_96_32:
-          case PORT_LAYOUT_IO_32_96_8:
-          case PORT_LAYOUT_IO_64_64_8:
-          case PORT_LAYOUT_IO_96_32_8:
-            if ((index+i+1) <= _layout_config_in.index_max)
-            {
-              _layout_config = _layout_config_in;
-              if (bitRead(_port_config, (index+i)/4))
-              {
-                _update_security(TYPE_STATE, index+i+1, (io_value >> (i & 0xfc)) & 0x000f ); 
-              }
-              else
-              {
-                _update_input(TYPE_STATE, index+i+1, bitRead(io_value, i) ? PORT_STATE_OFF : PORT_STATE_ON); 
-              }
-            }
-            else
-            {
-              _layout_config = _layout_config_out;
-              _update_output(TYPE_STATE, (index+i+1) - _layout_config_in.index_max, bitRead(io_value, i) ? PORT_STATE_ON : PORT_STATE_OFF); 
-            }
-            break;
-        }
+          }
+          else
+          {
+            _layout_config = _layout_config_out;
+            _update_output(TYPE_STATE, (index+i+1) - _layout_config_in.index_max, pin_value ? PORT_STATE_ON : PORT_STATE_OFF); 
+          }
+          break;
       }
     }
+
     // Need to store so we can detect changes for port animation
     _io_values[mcp] = io_value;
   }
@@ -1068,6 +1078,7 @@ void OXRS_LCD::_update_security(uint8_t type, uint8_t index, int state)
   int x =   _layout_config.x;
   int y =   _layout_config.y;
   int port;
+  int invert;
   uint16_t color;
   bool flash;
 
@@ -1075,6 +1086,10 @@ void OXRS_LCD::_update_security(uint8_t type, uint8_t index, int state)
 
   index -= 1;
   port = index / 4;
+  
+  // we only invert the NORMAL/ALARM states, not the alert states
+  invert = bitRead(_port_invert, port);
+  
   y = y + (port % 2) * bh;
   if (    _port_layout == PORT_LAYOUT_INPUT_96 
       ||  _port_layout == PORT_LAYOUT_IO_96_32 
@@ -1104,11 +1119,11 @@ void OXRS_LCD::_update_security(uint8_t type, uint8_t index, int state)
     switch (state)
     {
       case (B00000101):
-        color = color_map[0]; 
+        color = color_map[invert ? 1 : 0]; 
         flash = false;
         break;
       case (B00000001):
-        color = color_map[1]; 
+        color = color_map[invert ? 0 : 1]; 
         flash = false;
         break;
       case (B00000010):
