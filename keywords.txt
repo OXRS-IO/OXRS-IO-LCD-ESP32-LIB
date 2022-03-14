@@ -28,6 +28,9 @@ setOnTimeDisplay             KEYWORD2
 setOnTimeEvent               KEYWORD2
 setPortConfig                KEYWORD2
 
+setPinType                   KEYWORD2
+setPinInvert                 KEYWORD2
+
 setIPpos                     KEYWORD2
 setMACpos                    KEYWORD2
 setMQTTpos                   KEYWORD2
@@ -59,5 +62,5 @@ PORT_LAYOUT_IO_32_96_8      LITERAL1
 PORT_LAYOUT_IO_64_64_8      LITERAL1
 PORT_LAYOUT_IO_96_32_8      LITERAL1
 
-PORT_CONFIG_DEFAULT         LITERAL1
-PORT_CONFIG_SECURITY        LITERAL1
+PIN_TYPE_DEFAULT            LITERAL1
+PIN_TYPE_SECURITY           LITERAL1

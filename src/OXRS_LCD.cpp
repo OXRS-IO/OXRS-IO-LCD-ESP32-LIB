@@ -75,7 +75,7 @@ void OXRS_LCD::setBrightnessDim(int brightness_dim)
   _brightness_dim = brightness_dim;
 }
 
-void OXRS_LCD::setPortConfig(uint8_t mcp, uint8_t pin, int config)
+void OXRS_LCD::setPinType(uint8_t mcp, uint8_t pin, int type)
 {
   // mcp/port are zero-based, but index is 1-based (to match the firmware config)
   uint8_t port = (mcp * 4) + (pin / 4);
@@ -85,19 +85,28 @@ void OXRS_LCD::setPortConfig(uint8_t mcp, uint8_t pin, int config)
   bitWrite(_ports_to_flash, port, false);
   
   // handle the config type
-  switch (config)
+  switch (type)
   {
-    case PORT_CONFIG_SECURITY:
-      _update_security(TYPE_FRAME, index, PORT_STATE_OFF);
+    case PIN_TYPE_SECURITY:
+      _update_security(TYPE_FRAME, port, PORT_STATE_OFF);
       break;
       
     default:
       _update_input(TYPE_FRAME, index, PORT_STATE_OFF);
       break;
   }
+  
+  // update our port type global
+  bitWrite(_pin_type[mcp], pin, type);
 
-  // update our port config global
-  bitWrite(_port_config, port, config);
+  // force content to be updated (reset MCP initialised flag)
+  bitWrite(_mcps_initialised, mcp, 0);
+}
+
+void OXRS_LCD::setPinInvert(uint8_t mcp, uint8_t pin, int invert)
+{
+  // update our port invert global
+  bitWrite(_pin_invert[mcp], pin, invert);
 
   // force content to be updated (reset MCP initialised flag)
   bitWrite(_mcps_initialised, mcp, 0);
@@ -546,77 +555,87 @@ void OXRS_LCD::process(uint8_t mcp, uint16_t io_value)
          pin_count = _mcp_output_pins;
       }
     }
-    // walk thrue all inputs, call _update_... if change detected
+
+    // walk thru all inputs, call _update_... if change detected
     for (i = 0; i < pin_count; i++)
     {
-      if (bitRead(changed, i))
+      // skip if nothing has changed
+      if (!bitRead(changed, i)) continue;
+
+      // get the port configuration
+      int port = (index + i) / 4;
+      int pin_type = bitRead(_pin_type[mcp], i);
+      int pin_invert = bitRead(_pin_invert[mcp], i);
+      
+      // read the pin value (inverting if required)
+      int pin_value = bitRead(io_value, i) ^ pin_invert;
+
+      _set_backlight(_brightness_on);
+      _last_lcd_trigger = millis();
+      switch (_port_layout) 
       {
-        _set_backlight(_brightness_on);
-        _last_lcd_trigger = millis();
-        switch (_port_layout) 
-        {
-          // input ports
-          case PORT_LAYOUT_INPUT_32:
-          case PORT_LAYOUT_INPUT_64:
-          case PORT_LAYOUT_INPUT_96:
-          case PORT_LAYOUT_INPUT_128:
-            if (bitRead(_port_config, (index+i)/4))
+        // input ports
+        case PORT_LAYOUT_INPUT_32:
+        case PORT_LAYOUT_INPUT_64:
+        case PORT_LAYOUT_INPUT_96:
+        case PORT_LAYOUT_INPUT_128:
+          if (pin_type == PIN_TYPE_SECURITY)
+          {
+            _update_security(TYPE_STATE, port, (io_value >> (i & 0xfc)) & 0x000f ); 
+          }
+          else
+          {
+            _update_input(TYPE_STATE, index+i+1, pin_value ? PORT_STATE_OFF : PORT_STATE_ON); 
+          }
+          break;
+        // outport ports
+        case PORT_LAYOUT_OUTPUT_32:
+        case PORT_LAYOUT_OUTPUT_64:
+        case PORT_LAYOUT_OUTPUT_96:
+        case PORT_LAYOUT_OUTPUT_128:
+        case PORT_LAYOUT_OUTPUT_32_8:
+        case PORT_LAYOUT_OUTPUT_64_8:
+          _update_output(TYPE_STATE, index+i+1, pin_value ? PORT_STATE_ON : PORT_STATE_OFF); 
+          break;
+        // input and output ports mixed
+        case PORT_LAYOUT_IO_48:
+          if (index < 16)
+          {
+            _update_io_48(TYPE_STATE, index+i+1, pin_value ? PORT_STATE_OFF : PORT_STATE_ON);
+          } 
+          else
+          {
+            _update_io_48(TYPE_STATE, index+i+1, pin_value ? PORT_STATE_ON : PORT_STATE_OFF);
+          }
+          break;
+        // hybrid ports
+        case PORT_LAYOUT_IO_32_96:
+        case PORT_LAYOUT_IO_64_64:
+        case PORT_LAYOUT_IO_96_32:
+        case PORT_LAYOUT_IO_32_96_8:
+        case PORT_LAYOUT_IO_64_64_8:
+        case PORT_LAYOUT_IO_96_32_8:
+          if ((index+i+1) <= _layout_config_in.index_max)
+          {
+            _layout_config = _layout_config_in;
+            if (pin_type == PIN_TYPE_SECURITY)
             {
-              _update_security(TYPE_STATE, index+i+1, (io_value >> (i & 0xfc)) & 0x000f ); 
+              _update_security(TYPE_STATE, port, (io_value >> (i & 0xfc)) & 0x000f ); 
             }
             else
             {
-              _update_input(TYPE_STATE, index+i+1, bitRead(io_value, i) ? PORT_STATE_OFF : PORT_STATE_ON); 
+              _update_input(TYPE_STATE, index+i+1, pin_value ? PORT_STATE_OFF : PORT_STATE_ON); 
             }
-            break;
-          // outport ports
-          case PORT_LAYOUT_OUTPUT_32:
-          case PORT_LAYOUT_OUTPUT_64:
-          case PORT_LAYOUT_OUTPUT_96:
-          case PORT_LAYOUT_OUTPUT_128:
-          case PORT_LAYOUT_OUTPUT_32_8:
-          case PORT_LAYOUT_OUTPUT_64_8:
-            _update_output(TYPE_STATE, index+i+1, bitRead(io_value, i) ? PORT_STATE_ON : PORT_STATE_OFF); 
-            break;
-          // input and output ports mixed
-          case PORT_LAYOUT_IO_48:
-            if (index < 16)
-            {
-              _update_io_48(TYPE_STATE, index+i+1, bitRead(io_value, i) ? PORT_STATE_OFF : PORT_STATE_ON);
-            } 
-            else
-            {
-              _update_io_48(TYPE_STATE, index+i+1, bitRead(io_value, i) ? PORT_STATE_ON : PORT_STATE_OFF);
-            }
-            break;
-          // hybrid ports
-          case PORT_LAYOUT_IO_32_96:
-          case PORT_LAYOUT_IO_64_64:
-          case PORT_LAYOUT_IO_96_32:
-          case PORT_LAYOUT_IO_32_96_8:
-          case PORT_LAYOUT_IO_64_64_8:
-          case PORT_LAYOUT_IO_96_32_8:
-            if ((index+i+1) <= _layout_config_in.index_max)
-            {
-              _layout_config = _layout_config_in;
-              if (bitRead(_port_config, (index+i)/4))
-              {
-                _update_security(TYPE_STATE, index+i+1, (io_value >> (i & 0xfc)) & 0x000f ); 
-              }
-              else
-              {
-                _update_input(TYPE_STATE, index+i+1, bitRead(io_value, i) ? PORT_STATE_OFF : PORT_STATE_ON); 
-              }
-            }
-            else
-            {
-              _layout_config = _layout_config_out;
-              _update_output(TYPE_STATE, (index+i+1) - _layout_config_in.index_max, bitRead(io_value, i) ? PORT_STATE_ON : PORT_STATE_OFF); 
-            }
-            break;
-        }
+          }
+          else
+          {
+            _layout_config = _layout_config_out;
+            _update_output(TYPE_STATE, (index+i+1) - _layout_config_in.index_max, pin_value ? PORT_STATE_ON : PORT_STATE_OFF); 
+          }
+          break;
       }
     }
+
     // Need to store so we can detect changes for port animation
     _io_values[mcp] = io_value;
   }
@@ -933,16 +952,13 @@ void OXRS_LCD::_check_port_flash(void)
     {
       if (bitRead(_ports_to_flash, port))
       {
-        uint8_t mcp = port / 4;
-        uint8_t index = port * 4 + 1;
-      
         if (_flash_on)
         {
-          _update_security(TYPE_STATE, index, (_io_values[mcp] >> ((port & 0x03) * 4) & 0x000f));
+          _update_security(TYPE_STATE, port, (_io_values[port / 4] >> ((port & 0x03) * 4) & 0x000f));
         }
         else
         {
-          _update_security(TYPE_FRAME, index, PORT_STATE_OFF);
+          _update_security(TYPE_FRAME, port, PORT_STATE_OFF);
         }
       }
     }
@@ -992,6 +1008,7 @@ void OXRS_LCD::_update_input(uint8_t type, uint8_t index, int state)
   
   index -= 1;
   port = index / 4;
+  
   y = y + (port % 2) * bh;
   if (    _port_layout == PORT_LAYOUT_INPUT_96 
       ||  _port_layout == PORT_LAYOUT_IO_96_32 
@@ -1046,7 +1063,7 @@ void OXRS_LCD::_update_input(uint8_t type, uint8_t index, int state)
   // SHORT      OFF   OFF   ON    OFF   =>  DEBOUNCE_HIGH   SHORT_EVENT         B00001101   MAGENTA
   //                                                        FAULT_EVENT         all other   CYAN
 **/
-void OXRS_LCD::_update_security(uint8_t type, uint8_t index, int state)
+void OXRS_LCD::_update_security(uint8_t type, uint8_t port, int state)
 {
   // NORMAL, ALARM, TAMPER or SHORT, NC, FAULT
   uint16_t color_map[4] = {TFT_GREEN, TFT_RED, TFT_MAGENTA, TFT_CYAN};
@@ -1055,14 +1072,12 @@ void OXRS_LCD::_update_security(uint8_t type, uint8_t index, int state)
   int xo =  _layout_config.xo;
   int x =   _layout_config.x;
   int y =   _layout_config.y;
-  int port;
   uint16_t color;
   bool flash;
 
-  if (index > _layout_config.index_max) return;
-
-  index -= 1;
-  port = index / 4;
+  // calculate the max (1-based) index for this port and check 
+  if (((port * 4) + 4) > _layout_config.index_max) return;
+  
   y = y + (port % 2) * bh;
   if (    _port_layout == PORT_LAYOUT_INPUT_96 
       ||  _port_layout == PORT_LAYOUT_IO_96_32 
@@ -1083,20 +1098,28 @@ void OXRS_LCD::_update_security(uint8_t type, uint8_t index, int state)
   {
     color = (state != PORT_STATE_NA) ? TFT_WHITE : TFT_DARKGREY;
     tft.drawRect(x, y, bw, bh, color);
+
     tft.fillRect(x+1, y+1, bw-2, bh-2, TFT_BLACK);
     tft.fillRoundRect(x+2, y+2, bw-4, bh-4, 3, TFT_DARKGREY);
   }
   else
   // draw virtual led in port
   {
+    // get the invert config for the last pin of this port (that is what the event 
+    // is generated on and where the invert config needs to be set)
+    uint8_t mcp = port / 4;
+    uint8_t pin = ((port % 4) * 4) + 3;    
+    int invert = bitRead(_pin_invert[mcp], pin);
+      
+    // NOTE: we only invert the NORMAL/ALARM states, not the alert states
     switch (state)
     {
       case (B00000101):
-        color = color_map[0]; 
+        color = color_map[invert ? 1 : 0]; 
         flash = false;
         break;
       case (B00000001):
-        color = color_map[1]; 
+        color = color_map[invert ? 0 : 1]; 
         flash = false;
         break;
       case (B00000010):
@@ -1108,8 +1131,10 @@ void OXRS_LCD::_update_security(uint8_t type, uint8_t index, int state)
         color = color_map[3]; 
         flash = true;
     }
+
     if (state == 0xff) color = TFT_DARKGREY;
     tft.fillRoundRect(x+2, y+2, bw-4, bh-4, 3, color);
+
     bitWrite(_ports_to_flash, port, flash);
   }     
 }

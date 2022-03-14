@@ -53,9 +53,9 @@
 // row start of info section
 #define     Y_INFO                      50
 
-// port config constants
-#define     PORT_CONFIG_DEFAULT         0
-#define     PORT_CONFIG_SECURITY        1
+// pin type config constants
+#define     PIN_TYPE_DEFAULT            0
+#define     PIN_TYPE_SECURITY           1
 
 #define     LCD_BL_ON                   100       // LCD backlight in % when ON, i.e. after an event
 #define     LCD_BL_DIM                  10        // LCD backlight in % when DIMMED (0 == OFF), i.e. after LCD_ON_MS expires
@@ -129,7 +129,8 @@ class OXRS_LCD
     void setOnTimeDisplay(int ontime_display);
     void setOnTimeEvent(int ontime_event);
 
-    void setPortConfig(uint8_t mcp, uint8_t pin, int config);
+    void setPinType(uint8_t mcp, uint8_t pin, int type);
+    void setPinInvert(uint8_t mcp, uint8_t pin, int invert);
     
     void setIPpos(int yPos);
     void setMACpos(int yPos);
@@ -182,9 +183,12 @@ class OXRS_LCD
      
    // history buffer of io_values to extract changes
     uint16_t _io_values[8];
+    
     uint16_t _mcps_initialised = 0;
     int      _mcps_found;
-    uint32_t _port_config = 0;
+
+    uint16_t _pin_type[8];
+    uint16_t _pin_invert[8];
     
     void _clear_event(void);
     
