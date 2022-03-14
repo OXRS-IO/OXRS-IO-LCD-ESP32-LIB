@@ -75,41 +75,41 @@ void OXRS_LCD::setBrightnessDim(int brightness_dim)
   _brightness_dim = brightness_dim;
 }
 
-void OXRS_LCD::setPortType(uint8_t port, int type)
+void OXRS_LCD::setPinType(uint8_t mcp, uint8_t pin, int type)
 {
+  // mcp/port are zero-based, but index is 1-based (to match the firmware config)
+  uint8_t port = (mcp * 4) + (pin / 4);
+  uint8_t index = (mcp * 16) + pin + 1;
+
   // disable any flashing (might get re-enabled depending on port config)
   bitWrite(_ports_to_flash, port, false);
   
   // handle the config type
   switch (type)
   {
-    case PORT_TYPE_SECURITY:
+    case PIN_TYPE_SECURITY:
       _update_security(TYPE_FRAME, port, PORT_STATE_OFF);
       break;
       
     default:
-      // update each of the 4x pins on this port (mcp/port are zero-base, index is 1-based)
-      for (int i = 0; i < 4; i++)
-      {
-        _update_input(TYPE_FRAME, (port * 4) + i + 1, PORT_STATE_OFF);
-      }
+      _update_input(TYPE_FRAME, index, PORT_STATE_OFF);
       break;
   }
   
   // update our port type global
-  bitWrite(_port_type, port, type);
+  bitWrite(_pin_type[mcp], pin, type);
 
   // force content to be updated (reset MCP initialised flag)
-  bitWrite(_mcps_initialised, port / 4, 0);
+  bitWrite(_mcps_initialised, mcp, 0);
 }
 
-void OXRS_LCD::setPortInvert(uint8_t port, int invert)
+void OXRS_LCD::setPinInvert(uint8_t mcp, uint8_t pin, int invert)
 {
   // update our port invert global
-  bitWrite(_port_invert, port, invert);
+  bitWrite(_pin_invert[mcp], pin, invert);
 
   // force content to be updated (reset MCP initialised flag)
-  bitWrite(_mcps_initialised, port / 4, 0);
+  bitWrite(_mcps_initialised, mcp, 0);
 }
 
 // set info display row positions (0 hides specific member)
@@ -564,11 +564,11 @@ void OXRS_LCD::process(uint8_t mcp, uint16_t io_value)
 
       // get the port configuration
       int port = (index + i) / 4;
-      int port_type = bitRead(_port_type, port);
-      int port_invert = bitRead(_port_invert, port);
+      int pin_type = bitRead(_pin_type[mcp], i);
+      int pin_invert = bitRead(_pin_invert[mcp], i);
       
       // read the pin value (inverting if required)
-      int pin_value = bitRead(io_value, i) ^ port_invert;
+      int pin_value = bitRead(io_value, i) ^ pin_invert;
 
       _set_backlight(_brightness_on);
       _last_lcd_trigger = millis();
@@ -579,7 +579,7 @@ void OXRS_LCD::process(uint8_t mcp, uint16_t io_value)
         case PORT_LAYOUT_INPUT_64:
         case PORT_LAYOUT_INPUT_96:
         case PORT_LAYOUT_INPUT_128:
-          if (port_type == PORT_TYPE_SECURITY)
+          if (pin_type == PIN_TYPE_SECURITY)
           {
             _update_security(TYPE_STATE, port, (io_value >> (i & 0xfc)) & 0x000f ); 
           }
@@ -618,7 +618,7 @@ void OXRS_LCD::process(uint8_t mcp, uint16_t io_value)
           if ((index+i+1) <= _layout_config_in.index_max)
           {
             _layout_config = _layout_config_in;
-            if (port_type == PORT_TYPE_SECURITY)
+            if (pin_type == PIN_TYPE_SECURITY)
             {
               _update_security(TYPE_STATE, port, (io_value >> (i & 0xfc)) & 0x000f ); 
             }
@@ -1073,6 +1073,7 @@ void OXRS_LCD::_update_security(uint8_t type, uint8_t port, int state)
   int x =   _layout_config.x;
   int y =   _layout_config.y;
   uint16_t color;
+  bool flash;
 
   // calculate the max (1-based) index for this port and check 
   if (((port * 4) + 4) > _layout_config.index_max) return;
@@ -1104,10 +1105,13 @@ void OXRS_LCD::_update_security(uint8_t type, uint8_t port, int state)
   else
   // draw virtual led in port
   {
+    // get the invert config for the last pin of this port (that is what the event 
+    // is generated on and where the invert config needs to be set)
+    uint8_t mcp = port / 4;
+    uint8_t pin = ((port % 4) * 4) + 3;    
+    int invert = bitRead(_pin_invert[mcp], pin);
+      
     // NOTE: we only invert the NORMAL/ALARM states, not the alert states
-    int invert = bitRead(_port_invert, port);
-    bool flash;
-  
     switch (state)
     {
       case (B00000101):
