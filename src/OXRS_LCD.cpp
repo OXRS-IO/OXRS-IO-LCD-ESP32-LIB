@@ -179,7 +179,16 @@ int OXRS_LCD::drawHeader(const char * fwShortName, const char * fwMaker, const c
   tft.setTextColor(TFT_WHITE);
   tft.setTextDatum(TC_DATUM);
   tft.setFreeFont(&Roboto_Mono_Thin_13);
-  tft.drawString("Starting up...", 240/2 , 50); 
+  
+  if (_ethernet)
+  {
+    tft.drawString("Starting ethernet...", 240/2 , 50); 
+  }
+  
+  if (_wifi)
+  {
+    tft.drawString("Starting WiFi...", 240/2 , 50); 
+  }
   
   return return_code;
 }
@@ -856,13 +865,14 @@ void OXRS_LCD::_show_IP(IPAddress ip)
   }
   tft.drawString(buffer, 12, _yIP);
   
-  if (_wifi)
-  {
-    tft.drawBitmap(13, _yIP+1, icon_wifi, 11, 10, TFT_BLACK, TFT_WHITE);
-  }
   if (_ethernet)
   {
     tft.drawBitmap(13, _yIP+1, icon_ethernet, 11, 10, TFT_BLACK, TFT_WHITE);
+  }
+
+  if (_wifi)
+  {
+    tft.drawBitmap(13, _yIP+1, icon_wifi, 11, 10, TFT_BLACK, TFT_WHITE);
   }
 }
 
