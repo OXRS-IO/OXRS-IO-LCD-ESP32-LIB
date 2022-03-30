@@ -269,7 +269,7 @@ void OXRS_LCD::drawPorts(int port_layout, uint8_t mcps_found)
   }   
   
   // handle output configurations
-  int frame_h;
+  int frame_h = 0;
   if (_getPortLayoutGroup(_port_layout) == PORT_LAYOUT_GROUP_OUTPUT)
   {
     // autodetect layout from mcps_found
@@ -1373,7 +1373,7 @@ bool OXRS_LCD::_drawBmp(const char *filename, int16_t x, int16_t y, int16_t bmp_
         uint8_t*  bptr = lineBuffer;
         uint16_t* tptr = (uint16_t*)lineBuffer;
         // Convert 24 to 16 bit colours
-        for (uint16_t col = 0; col < w; col++)
+        for (col = 0; col < w; col++)
         {
           b = *bptr++;
           g = *bptr++;
@@ -1457,7 +1457,7 @@ bool OXRS_LCD::_drawBmp_P(const uint8_t *image, int16_t x, int16_t y, int16_t bm
         uint8_t*  bptr = lineBuffer;
         uint16_t* tptr = (uint16_t*)lineBuffer;
         // Convert 24 to 16 bit colours
-        for (uint16_t col = 0; col < w; col++)
+        for (col = 0; col < w; col++)
         {
           b = *bptr++;
           g = *bptr++;
