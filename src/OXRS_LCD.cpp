@@ -1040,7 +1040,8 @@ int OXRS_LCD::_getPortLayoutGroup(int port_layout)
 void OXRS_LCD::_update_input(uint8_t type, uint8_t index, int state)
 {
   // OFF, ON, NA, DISABLED
-  uint16_t color_map[4] = {tft.color565(130,130,130), TFT_YELLOW, tft.color565(60,60,60), TFT_BLACK};
+  uint16_t color_map[4] = {TFT_DARKGREY, TFT_YELLOW, tft.color565(60,60,60), TFT_BLACK};
+  
   int bw =  _layout_config.bw;
   int bh =  _layout_config.bh;
   int xo =  _layout_config.xo;
@@ -1112,6 +1113,7 @@ void OXRS_LCD::_update_security(uint8_t type, uint8_t port, int state)
 {
   // NORMAL, ALARM, TAMPER or SHORT, NC, FAULT
   uint16_t color_map[4] = {TFT_GREEN, TFT_RED, TFT_MAGENTA, TFT_CYAN};
+  
   int bw =  _layout_config.bw;
   int bh =  _layout_config.bh;
   int xo =  _layout_config.xo;
