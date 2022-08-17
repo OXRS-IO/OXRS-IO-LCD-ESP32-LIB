@@ -87,6 +87,7 @@
 #define     PORT_STATE_OFF              0
 #define     PORT_STATE_ON               1
 #define     PORT_STATE_NA               2
+#define     PORT_STATE_DISABLED         3
 
 // return codes from draw_header
 #define     LCD_INFO_LOGO_FROM_SPIFFS   101   // logo found on SPIFFS and displayed
@@ -131,6 +132,7 @@ class OXRS_LCD
 
     void setPinType(uint8_t mcp, uint8_t pin, int type);
     void setPinInvert(uint8_t mcp, uint8_t pin, int invert);
+    void setPinDisabled(uint8_t mcp, uint8_t pin, int disabled);
     
     void setIPpos(int yPos);
     void setMACpos(int yPos);
@@ -189,6 +191,7 @@ class OXRS_LCD
 
     uint16_t _pin_type[8];
     uint16_t _pin_invert[8];
+    uint16_t _pin_disabled[8];
     
     void _clear_event(void);
     
