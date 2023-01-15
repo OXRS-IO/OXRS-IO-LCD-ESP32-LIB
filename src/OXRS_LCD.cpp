@@ -1382,10 +1382,10 @@ bool OXRS_LCD::_drawBmp(const char *filename, int16_t x, int16_t y, int16_t bmp_
   uint8_t   r, g, b;
 
 
-  if (!SPIFFS.begin())
+  if (!LittleFS.begin())
     return false;
 
-  File file = SPIFFS.open(filename, "r");
+  File file = LittleFS.open(filename, "r");
 
   if (!file) 
     return false;  
