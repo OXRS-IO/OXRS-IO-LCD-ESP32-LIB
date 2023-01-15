@@ -9,14 +9,12 @@
 #include <TFT_eSPI.h>               // Hardware-specific library
 #include <OXRS_MQTT.h>
 #include <Ethernet.h>
+#include <LittleFS.h>
 
 #if defined(ESP8266)
 #include <ESP8266WiFi.h>
-#include <LittleFS.h>
-#define SPIFFS LittleFS
 #else
 #include <WiFi.h>
-#include <SPIFFS.h>
 #endif
 
 #define     TYPE_FRAME                  0
