@@ -783,21 +783,21 @@ void OXRS_LCD::showTemp(float temperature, char unit)
 /*
  * draw event on bottom line of screen
  */
-void OXRS_LCD::showEvent(const char * s_event)
+void OXRS_LCD::showEvent(const char * s_event, int font)
 {
   // Show last input event on bottom line
-  tft.fillRect(0, 225, 240, 15,  TFT_WHITE);
+  tft.fillRect(0, 223, 240, 17,  TFT_WHITE);
   tft.setTextColor(TFT_BLACK, TFT_WHITE);
   tft.setTextDatum(TL_DATUM);
-  tft.setFreeFont(FMB9);       // Select Free Mono Bold 9
-  tft.drawString(s_event, 0, 225);
+  tft.setFreeFont(font != FONT_MONO ? FSSB9 : FMB9);
+  tft.drawString(s_event, 2, 224);
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
   _last_event_display = millis(); 
 }
 
 void OXRS_LCD::_clear_event()
 {
-  tft.fillRect(0, 225, 240, 240,  TFT_DARKGREY);
+  tft.fillRect(0, 223, 240, 240,  TFT_DARKGREY);
 }
 
 byte * OXRS_LCD::_get_MAC_address(byte * mac)
