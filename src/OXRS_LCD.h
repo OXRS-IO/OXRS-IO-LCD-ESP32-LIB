@@ -63,6 +63,10 @@
 #define     LCD_PORT_FLASH_ON_MS        700       // flash timer security port display
 #define     LCD_PORT_FLASH_OFF_MS       300       // flash timer security port display
 
+// fonts used for event display
+#define     FONT_MONO                   0
+#define     FONT_PROP                   1
+
 // LCD backlight control
 // TFT_BL GPIO pin defined in user_setup.h of tft_eSPI
 // setting PWM properties
@@ -121,7 +125,7 @@ class OXRS_LCD
     
     void hideTemp(void);
     void showTemp(float temperature, char unit = 'C');
-    void showEvent(const char * s_event);
+    void showEvent(const char * s_event, int font = FONT_MONO);
     
     void setBrightnessOn(int brightness_on);
     void setBrightnessDim(int brightness_dim);
